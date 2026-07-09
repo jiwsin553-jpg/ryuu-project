@@ -2581,32 +2581,35 @@ function AdminDashboard({
               />
             </label>
           </div>
+        </div>
+      </div>
 
-          <div id="admin-produtos" className="glass scroll-mt-24 rounded-lg p-6">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-2xl font-black">Produtos</h2>
-              <button
-                type="button"
-                onClick={addProduct}
-                className="rounded-lg bg-ryuu-neon/22 px-3 py-2 text-xs font-black text-ryuu-soft hover:shadow-glow-sm"
-              >
-                Criar produto
-              </button>
-            </div>
-            <div className="grid gap-4">
-              {products.map((product) => (
-                <AdminProductEditor
-                  key={product.id}
-                  product={product}
-                  updataProduct={updataProduct}
-                  saveProduct={saveProduct}
-                  duplicateProduct={duplicateProduct}
-                  removeProduct={removeProduct}
-                  handleProductImageUpload={handleProductImageUpload}
-                />
-              ))}
-            </div>
+      <div id="admin-produtos" className="glass mt-6 scroll-mt-24 rounded-lg p-6">
+        <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-2xl font-black">Produtos</h2>
+            <p className="mt-1 text-sm text-purple-100/58">Edite preço, estoque, imagens e descrições com mais espaço.</p>
           </div>
+          <button
+            type="button"
+            onClick={addProduct}
+            className="rounded-lg bg-ryuu-neon/22 px-4 py-3 text-sm font-black text-ryuu-soft hover:shadow-glow-sm"
+          >
+            Criar produto
+          </button>
+        </div>
+        <div className="grid gap-5">
+          {products.map((product) => (
+            <AdminProductEditor
+              key={product.id}
+              product={product}
+              updataProduct={updataProduct}
+              saveProduct={saveProduct}
+              duplicateProduct={duplicateProduct}
+              removeProduct={removeProduct}
+              handleProductImageUpload={handleProductImageUpload}
+            />
+          ))}
         </div>
       </div>
 
@@ -2777,9 +2780,9 @@ function AdminProductEditor({
         </span>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[0.82fr_1.18fr]">
+      <div className="grid gap-5 xl:grid-cols-[0.62fr_1.38fr]">
         <div>
-          <ProductImage product={product} className="h-52" />
+          <ProductImage product={product} className="h-64" />
           <div className="mt-3 grid gap-2">
             <AdminField label="Imagem ou GIF">
               <input
@@ -2864,7 +2867,7 @@ function AdminProductEditor({
             </AdminField>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 pt-1">
+          <div className="grid gap-2 pt-1 sm:grid-cols-3">
             <button
               type="button"
               onClick={() => saveProduct(product)}
