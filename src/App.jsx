@@ -213,7 +213,7 @@ const getDiscordNameFromUser = (user) => {
     metadata.preferred_username ||
     metadata.user_name ||
     metadata.global_name ||
-    metadata.custom_claims.global_name ||
+    metadata.custom_claims?.global_name ||
     ''
   );
 };
@@ -562,6 +562,7 @@ function App() {
 
     setActiveView('checkout');
     setIsCartOpen(false);
+    window.history.replaceState(null, '', window.location.pathname);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -1158,6 +1159,10 @@ function App() {
             profile={profile}
             currentUser={currentUser}
           />
+        )}
+
+        {!['home', 'catalogo', 'checkout', 'dashboard', 'admin'].includes(activeView) && (
+          <Hero setActiveView={setActiveView} />
         )}
       </main>
 
