@@ -32,7 +32,6 @@ import {
   PackageCheck,
   Save,
   Search,
-  Settings,
   ShieldCheck,
   ShoppingCart,
   Sparkles,
@@ -308,6 +307,7 @@ function App() {
           if (profilesError) throw profilesError;
           setRegisteredUsers(
             (dbProfiles || []).map((item) => ({
+              id: item.id,
               name: item.name || 'Sem nome',
               email: item.email,
               discord: item.discord || '-',
@@ -386,9 +386,9 @@ function App() {
   }, [couponCode, couponRules]);
 
   useEffect(() => {
-    const canSeeClientDashboard = isLoggedIn && ['cliente', 'administrador'].includes(userRole);
-    if (activeView === 'dashboard' && !canSeeClientDashboard) {
-      setActiveView('catalogo');
+    if (activeView === 'dashboard' && !isLoggedIn) {
+      setIsAuthOpen(true);
+      setActiveView('home');
     }
 
     if (activeView === 'admin' && userRole !== 'administrador') {
@@ -695,6 +695,23 @@ function App() {
     notify('Pedido marcado como Acesso Enviado.');
   };
 
+  const deleteOrder = async (orderId) => {
+    if (!window.confirm('Excluir este pedido?')) return;
+
+    const order = orderStatus.find((item) => item.id === orderId);
+
+    if (isSupabaseConfigured && order?.rawId) {
+      const { error } = await supabase.from('orders').delete().eq('id', order.rawId);
+      if (error) {
+        notify(error.message, 'error');
+        return;
+      }
+    }
+
+    setOrderStatus((current) => current.filter((item) => item.id !== orderId));
+    notify('Pedido removido.');
+  };
+
   const updataProduct = (productId, field, value) => {
     setProducts((current) =>
       current.map((product) =>
@@ -746,7 +763,30 @@ function App() {
     notify('Produto criado.');
   };
 
+  const duplicateProduct = async (product) => {
+    const newProduct = {
+      ...product,
+      id: `produto-${Date.now()}`,
+      name: `${product.name} cópia`,
+      sales: 0,
+      available: false,
+    };
+
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('products').insert(productToDbProduct(newProduct));
+      if (error) {
+        notify(error.message, 'error');
+        return;
+      }
+    }
+
+    setProducts((current) => [...current, newProduct]);
+    notify('Produto duplicado.');
+  };
+
   const removeProduct = async (productId) => {
+    if (!window.confirm('Excluir este produto?')) return;
+
     if (isSupabaseConfigured) {
       const { error } = await supabase.from('products').delete().eq('id', productId);
       if (error) {
@@ -799,21 +839,11 @@ function App() {
   };
 
   const navItems = useMemo(() => {
-    const items = [
+    return [
       { label: 'Início', id: 'home' },
       { label: 'Catálogo', id: 'catalogo' },
     ];
-
-    if (isLoggedIn && ['cliente', 'administrador'].includes(userRole)) {
-      items.push({ label: 'Dashboard', id: 'dashboard' });
-    }
-
-    if (isLoggedIn && userRole === 'administrador') {
-      items.push({ label: 'Admin', id: 'admin' });
-    }
-
-    return items;
-  }, [isLoggedIn, userRole]);
+  }, []);
 
   return (
     <div className="min-h-screen overflow-x-hidden text-white">
@@ -890,11 +920,14 @@ function App() {
             updataProduct={updataProduct}
             saveProduct={saveProduct}
             addProduct={addProduct}
+            duplicateProduct={duplicateProduct}
             removeProduct={removeProduct}
             orders={orderStatus}
             markAsSent={markAsSent}
+            deleteOrder={deleteOrder}
             userRole={userRole}
             users={registeredUsers}
+            setUsers={setRegisteredUsers}
             coupons={adminCoupons}
             setCoupons={setAdminCoupons}
             notify={notify}
@@ -967,6 +1000,11 @@ function Navbar({
     setMobileMenuOpen(false);
     setUserMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const openAccount = (tab = 'perfil') => {
+    window.location.hash = `conta-${tab}`;
+    navigate('dashboard');
   };
 
   const handleUserButtonClick = () => {
@@ -1044,11 +1082,35 @@ function Navbar({
                 </div>
                 <button
                   type="button"
-                  onClick={() => navigate('dashboard')}
+                  onClick={() => openAccount('perfil')}
                   className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-purple-100 hover:bg-white/8"
                 >
                   <User size={16} />
-                  Minha conta
+                  Perfil
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openAccount('pedidos')}
+                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-purple-100 hover:bg-white/8"
+                >
+                  <ShoppingCart size={16} />
+                  Pedidos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openAccount('entrega')}
+                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-purple-100 hover:bg-white/8"
+                >
+                  <PackageCheck size={16} />
+                  Entrega
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openAccount('suporte')}
+                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-purple-100 hover:bg-white/8"
+                >
+                  <Headphones size={16} />
+                  Suporte
                 </button>
                 {userRole === 'administrador' && (
                   <button
@@ -1099,7 +1161,7 @@ function Navbar({
               type="button"
               onClick={() => {
                 if (isLoggedIn) {
-                  navigate('dashboard');
+                  openAccount('perfil');
                 } else {
                   setIsAuthOpen(true);
                   setMobileMenuOpen(false);
@@ -1109,6 +1171,21 @@ function Navbar({
             >
               {isLoggedIn ? userName : 'Entrar / Cadastrar'}
             </button>
+            {isLoggedIn &&
+              [
+                ['pedidos', 'Pedidos'],
+                ['entrega', 'Entrega'],
+                ['suporte', 'Suporte'],
+              ].map(([tab, label]) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => openAccount(tab)}
+                  className="rounded-lg px-3 py-2 text-left text-sm font-semibold text-purple-100 hover:bg-white/8"
+                >
+                  {label}
+                </button>
+              ))}
             {isLoggedIn && userRole === 'administrador' && (
               <button
                 type="button"
@@ -1180,12 +1257,7 @@ function ProductCatalog({ products, addToCart, setSelectedProduct, standalone = 
                   : 'border-white/10 bg-white/[0.035] opacity-75'
               }`}
           >
-            <div className="mb-5 grid h-36 place-items-center rounded-lg border border-purple-200/12 bg-black/30 text-center">
-              <div>
-                <Crown className="mx-auto mb-2 text-ryuu-soft" size={30} />
-                <p className="text-sm font-bold text-purple-100/68">{product.image}</p>
-              </div>
-            </div>
+            <ProductImage product={product} className="mb-5 h-36" />
             <div className="mb-3 flex items-start justify-between gap-3">
               <h3 className="text-2xl font-black">{product.name}</h3>
               <StatusBadge available={product.available} />
@@ -1234,6 +1306,26 @@ function ProductCatalog({ products, addToCart, setSelectedProduct, standalone = 
   );
 }
 
+function ProductImage({ product, className = 'h-40' }) {
+  const image = product.image || '';
+  const isImageUrl = /^https?:\/\//i.test(image) || image.startsWith('data:image/');
+
+  return (
+    <div className={`overflow-hidden rounded-lg border border-purple-200/12 bg-black/30 ${className}`}>
+      {isImageUrl ? (
+        <img src={image} alt={product.name} className="h-full w-full object-cover" loading="lazy" />
+      ) : (
+        <div className="grid h-full place-items-center text-center">
+          <div>
+            <Crown className="mx-auto mb-2 text-ryuu-soft" size={30} />
+            <p className="px-4 text-sm font-bold text-purple-100/68">{image || 'Imagem do produto'}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -1259,13 +1351,7 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
 
         <div className="grid gap-6 p-5 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-lg border border-ryuu-neon/20 bg-black/28 p-5">
-            <div className="grid h-48 place-items-center rounded-lg border border-purple-200/12 bg-ryuu-deep/24 text-center">
-              <div>
-                <Crown className="mx-auto mb-3 text-ryuu-soft" size={42} />
-                <p className="font-black text-purple-100">{product.image}</p>
-                <p className="mt-1 text-sm text-purple-100/58">Imagem ou GIF editável no admin</p>
-              </div>
-            </div>
+            <ProductImage product={product} className="h-48" />
             <div className="mt-5 rounded-lg border border-ryuu-neon/18 bg-ryuu-neon/10 p-4">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-ryuu-soft">
                 Acesso vitalício
@@ -1917,6 +2003,19 @@ function Checkout({
 }
 
 function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, orderStatus, profile, currentUser, saveProfile }) {
+  const getInitialAccountTab = () => {
+    const tab = window.location.hash.replace('#conta-', '');
+    return ['perfil', 'pedidos', 'entrega', 'suporte'].includes(tab) ? tab : 'perfil';
+  };
+  const [accountTab, setAccountTab] = useState(getInitialAccountTab);
+
+  useEffect(() => {
+    const syncHash = () => setAccountTab(getInitialAccountTab());
+    syncHash();
+    window.addEventListener('hashchange', syncHash);
+    return () => window.removeEventListener('hashchange', syncHash);
+  }, []);
+
   if (!isLoggedIn) {
     return (
       <section className="mx-auto grid min-h-[68vh] max-w-2xl place-items-center px-4 py-16 text-center">
@@ -1936,36 +2035,43 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
     );
   }
 
-  if (!['cliente', 'administrador'].includes(userRole)) {
-    return (
-      <section className="mx-auto grid min-h-[68vh] max-w-2xl place-items-center px-4 py-16 text-center">
-        <div className="glass rounded-lg p-8">
-          <ShoppingCart className="mx-auto mb-4 text-ryuu-soft" size={42} />
-          <h1 className="text-3xl font-black">Você ainda é Usuário</h1>
-          <p className="mt-3 text-purple-100/70">
-            O dashboard do cliente aparece somente depois de uma compra confirmada.
-          </p>
-          <button
-            type="button"
-            onClick={() => setActiveView('catalogo')}
-            className="mt-6 rounded-lg bg-gradient-to-r from-ryuu-violet to-ryuu-neon px-6 py-3 font-black shadow-glow-sm"
-          >
-            Ver produtos
-          </button>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <div className="mb-8">
-        <p className="text-sm font-black uppercase tracking-[0.22em] text-ryuu-soft">Dashboard do cliente</p>
+        <p className="text-sm font-black uppercase tracking-[0.22em] text-ryuu-soft">Minha conta</p>
         <h1 className="mt-2 text-4xl font-black">Minha conta</h1>
+        <p className="mt-3 max-w-2xl text-purple-100/68">
+          Atualize seus dados, vincule seu Discord e acompanhe seus pedidos.
+        </p>
+      </div>
+
+      <div className="mb-6 flex flex-wrap gap-2">
+        {[
+          ['perfil', 'Perfil'],
+          ['pedidos', 'Pedidos'],
+          ['entrega', 'Entrega'],
+          ['suporte', 'Suporte'],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => {
+              window.location.hash = `conta-${id}`;
+              setAccountTab(id);
+            }}
+            className={`rounded-full px-4 py-2 text-sm font-black transition ${
+              accountTab === id
+                ? 'bg-ryuu-neon text-white shadow-glow-sm'
+                : 'border border-purple-200/12 bg-white/5 text-purple-100/72 hover:border-ryuu-neon'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[0.72fr_1fr]">
-        <div className="glass rounded-lg p-6">
+        <div className={`glass rounded-lg p-6 ${accountTab !== 'perfil' ? 'hidden lg:block' : ''}`}>
           <h2 className="mb-4 text-2xl font-black">Perfil</h2>
           <ProfileEditor profile={profile} currentUser={currentUser} userRole={userRole} saveProfile={saveProfile} />
           <a
@@ -1980,29 +2086,113 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
         </div>
 
         <div className="glass rounded-lg p-6">
-          <h2 className="mb-4 text-2xl font-black">Histórico de compras</h2>
-          <DateTable
-            headers={['Pedido', 'Produto', 'Valor', 'Status', 'Date']}
-            rows={orderStatus.map((order) => [order.id, order.product, formatCurrency(order.value), order.status, order.data])}
-          />
+          {accountTab === 'perfil' && (
+            <>
+              <h2 className="mb-4 text-2xl font-black">Resumo</h2>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <AccountMiniStat label="Cargo" value={roleLabels[userRole] || 'Usuário'} />
+                <AccountMiniStat label="Pedidos" value={String(orderStatus.length)} />
+                <AccountMiniStat label="Discord" value={profile?.discord || 'Não vinculado'} />
+              </div>
+            </>
+          )}
+
+          {accountTab === 'pedidos' && (
+            <>
+              <h2 className="mb-4 text-2xl font-black">Histórico de compras</h2>
+              <DateTable
+                headers={['Pedido', 'Produto', 'Valor', 'Status', 'Data']}
+                rows={orderStatus.map((order) => [
+                  order.id,
+                  order.product,
+                  formatCurrency(order.value),
+                  order.status,
+                  order.data,
+                ])}
+              />
+              {!['cliente', 'administrador'].includes(userRole) && (
+                <button
+                  type="button"
+                  onClick={() => setActiveView('catalogo')}
+                  className="mt-5 rounded-lg border border-ryuu-neon/35 bg-white/5 px-4 py-3 font-black text-purple-50 transition hover:shadow-glow-sm"
+                >
+                  Ver produtos
+                </button>
+              )}
+            </>
+          )}
+
+          {accountTab === 'entrega' && (
+            <>
+              <h2 className="mb-4 text-2xl font-black">Entrega</h2>
+              <div className="grid gap-3">
+                {orderStatus.length === 0 ? (
+                  <p className="rounded-lg border border-purple-200/12 bg-black/24 p-4 text-purple-100/66">
+                    Nenhuma entrega pendente.
+                  </p>
+                ) : (
+                  orderStatus.map((order) => (
+                    <div key={order.id} className="rounded-lg border border-purple-200/12 bg-black/24 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="font-black">{order.product}</p>
+                          <p className="text-sm text-purple-100/60">{order.id}</p>
+                        </div>
+                        <span className="rounded-full border border-ryuu-neon/25 bg-ryuu-neon/10 px-3 py-1 text-xs font-black text-ryuu-soft">
+                          {order.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+
+          {accountTab === 'suporte' && (
+            <>
+              <h2 className="mb-4 text-2xl font-black">Suporte</h2>
+              <p className="leading-7 text-purple-100/72">
+                Precisa de ajuda com pagamento, entrega ou acesso? Chama a equipe Ryuu no Discord.
+              </p>
+              <a
+                href="https://discord.gg/SKQXhFHtEp"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-5 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-ryuu-violet to-ryuu-neon px-5 py-3 font-black shadow-glow-sm"
+              >
+                <img src={discordIcon} alt="" className="h-5 w-5 object-contain" />
+                Entrar no Discord
+              </a>
+            </>
+          )}
         </div>
       </div>
     </section>
   );
 }
 
+function AccountMiniStat({ label, value }) {
+  return (
+    <div className="rounded-lg border border-purple-200/12 bg-black/24 p-4">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-100/48">{label}</p>
+      <p className="mt-2 truncate text-lg font-black">{value}</p>
+    </div>
+  );
+}
+
 function ProfileEditor({ profile, currentUser, userRole, saveProfile }) {
   const [draft, setDraft] = useState({
-    name: profile.name || 'Cliente Ryuu',
-    email: profile.email || currentUser.email || '',
+    name: profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Cliente Ryuu',
+    email: profile?.email || currentUser?.email || '',
     discord: profile?.discord || '',
     password: '',
   });
 
   useEffect(() => {
     setDraft({
-      name: profile.name || 'Cliente Ryuu',
-      email: profile.email || currentUser.email || '',
+      name: profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Cliente Ryuu',
+      email: profile?.email || currentUser?.email || '',
       discord: profile?.discord || '',
       password: '',
     });
@@ -2064,11 +2254,14 @@ function AdminDashboard({
   updataProduct,
   saveProduct,
   addProduct,
+  duplicateProduct,
   removeProduct,
   orders: adminOrders,
   markAsSent,
+  deleteOrder,
   userRole,
   users: adminUsers,
+  setUsers,
   coupons: adminCoupons,
   setCoupons,
   notify,
@@ -2158,19 +2351,104 @@ function AdminDashboard({
     notify('Cupom atualizado.');
   };
 
+  const deleteCoupon = async (code) => {
+    if (!window.confirm('Excluir este cupom?')) return;
+
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('coupons').delete().eq('code', code);
+      if (error) {
+        notify(error.message, 'error');
+        return;
+      }
+    }
+
+    setCoupons((current) => current.filter((coupon) => coupon.code !== code));
+    notify('Cupom removido.');
+  };
+
+  const updateUserRole = async (userId, role) => {
+    if (!userId) {
+      notify('Usuário sem ID.', 'error');
+      return;
+    }
+
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('profiles').update({ role }).eq('id', userId);
+      if (error) {
+        notify(error.message, 'error');
+        return;
+      }
+    }
+
+    setUsers((current) => current.map((user) => (user.id === userId ? { ...user, role } : user)));
+    notify('Cargo atualizado.');
+  };
+
+  const handleProductImageUpload = async (product, file) => {
+    if (!file) return;
+
+    const maxSize = 20 * 1024 * 1024;
+    if (file.size > maxSize) {
+      notify('Imagem muito grande. Limite: 20MB.', 'error');
+      return;
+    }
+
+    if (!isSupabaseConfigured) {
+      notify('Supabase Storage não configurado.', 'error');
+      return;
+    }
+
+    const extension = file.name.split('.').pop() || 'png';
+    const path = `${product.id}/${Date.now()}.${extension}`;
+    const { error: uploadError } = await supabase.storage.from('product-images').upload(path, file, {
+      cacheControl: '3600',
+      upsert: true,
+    });
+
+    if (uploadError) {
+      notify(uploadError.message, 'error');
+      return;
+    }
+
+    const { data } = supabase.storage.from('product-images').getPublicUrl(path);
+    updataProduct(product.id, 'image', data.publicUrl);
+    notify('Imagem adicionada.');
+  };
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
           <p className="text-sm font-black uppercase tracking-[0.22em] text-ryuu-soft">Admin Dashboard</p>
           <h1 className="mt-2 text-4xl font-black">Painel administrativo</h1>
+          <p className="mt-3 max-w-2xl text-purple-100/62">
+            Controle pedidos, produtos, usuários e cupons em um só lugar.
+          </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full border border-ryuu-neon/25 bg-ryuu-deep/40 px-4 py-2 text-sm font-bold text-purple-100">
           <ShieldCheck size={17} /> Rota protegida por role admin
         </div>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className="mb-6 flex flex-wrap gap-2">
+        {[
+          ['Resumo', '#admin-resumo'],
+          ['Pedidos', '#admin-pedidos'],
+          ['Produtos', '#admin-produtos'],
+          ['Usuários', '#admin-usuarios'],
+          ['Cupons', '#admin-cupons'],
+        ].map(([label, href]) => (
+          <a
+            key={href}
+            href={href}
+            className="rounded-full border border-purple-200/12 bg-white/5 px-4 py-2 text-sm font-black text-purple-100/80 transition hover:border-ryuu-neon hover:text-white"
+          >
+            {label}
+          </a>
+        ))}
+      </div>
+
+      <div id="admin-resumo" className="grid scroll-mt-24 gap-5 md:grid-cols-3">
         <AdminStat icon={CreditCard} label="Receita total" value={formatCurrency(revenue)} />
         <AdminStat icon={ShoppingCart} label="Pedidos" value={String(adminOrders.length)} />
         <AdminStat icon={PackageCheck} label="Acessos enviados" value={String(sentCount)} />
@@ -2215,7 +2493,7 @@ function AdminDashboard({
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.86fr]">
-        <div className="glass rounded-lg p-6">
+        <div id="admin-pedidos" className="glass scroll-mt-24 rounded-lg p-6">
           <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <h2 className="text-2xl font-black">Gerenciamento de pedidos</h2>
             <div className="flex gap-2">
@@ -2242,7 +2520,7 @@ function AdminDashboard({
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="text-purple-100/62">
                 <tr>
-                  {['Pedido', 'Cliente', 'Produto', 'Status', 'Discord', 'Ação'].map((header) => (
+                  {['Pedido', 'Cliente', 'Produto', 'Status', 'Discord', 'Ações'].map((header) => (
                     <th key={header} className="border-b border-purple-200/10 px-3 py-3 font-black">
                       {header}
                     </th>
@@ -2265,14 +2543,23 @@ function AdminDashboard({
                       <td className="px-3 py-4">{order.status}</td>
                       <td className="px-3 py-4">{order.discord}</td>
                       <td className="px-3 py-4">
-                        <button
-                          type="button"
-                          onClick={() => markAsSent(order.id)}
-                          className="rounded-lg bg-ryuu-neon/22 px-3 py-2 text-xs font-black text-ryuu-soft disabled:cursor-not-allowed disabled:opacity-50"
-                          disabled={order.status === 'Acesso Enviado'}
-                        >
-                          Marcar enviado
-                        </button>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => markAsSent(order.id)}
+                            className="rounded-lg bg-ryuu-neon/22 px-3 py-2 text-xs font-black text-ryuu-soft disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={order.status === 'Acesso Enviado'}
+                          >
+                            Enviado
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteOrder(order.id)}
+                            className="rounded-lg border border-red-300/20 bg-red-400/10 px-3 py-2 text-xs font-black text-red-100"
+                          >
+                            Excluir
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -2297,7 +2584,7 @@ function AdminDashboard({
             </label>
           </div>
 
-          <div className="glass rounded-lg p-6">
+          <div id="admin-produtos" className="glass scroll-mt-24 rounded-lg p-6">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-2xl font-black">Produtos</h2>
               <button
@@ -2311,16 +2598,40 @@ function AdminDashboard({
             <div className="grid gap-4">
               {products.map((product) => (
                 <div key={product.id} className="rounded-lg border border-purple-200/12 bg-black/22 p-4">
+                  <ProductImage product={product} className="mb-3 h-40" />
                   <input
                     value={product.name}
                     onChange={(event) => updataProduct(product.id, 'name', event.target.value)}
                     className="w-full rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 font-black outline-none focus:border-ryuu-neon"
+                  />
+                  <input
+                    value={product.shortDescription || ''}
+                    onChange={(event) => updataProduct(product.id, 'shortDescription', event.target.value)}
+                    placeholder="Descrição curta"
+                    className="mt-2 w-full rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 text-sm outline-none focus:border-ryuu-neon"
                   />
                   <textarea
                     value={product.description}
                     onChange={(event) => updataProduct(product.id, 'description', event.target.value)}
                     className="mt-2 h-24 w-full rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 text-sm outline-none focus:border-ryuu-neon"
                   />
+                  <div className="mt-2 grid gap-2">
+                    <input
+                      value={product.image || ''}
+                      onChange={(event) => updataProduct(product.id, 'image', event.target.value)}
+                      placeholder="URL da imagem/GIF ou texto do placeholder"
+                      className="rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 text-sm outline-none focus:border-ryuu-neon"
+                    />
+                    <label className="rounded-lg border border-dashed border-ryuu-neon/35 bg-ryuu-neon/8 px-3 py-3 text-center text-xs font-black text-ryuu-soft transition hover:bg-ryuu-neon/12">
+                      Enviar imagem/GIF até 20MB
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        className="hidden"
+                        onChange={(event) => handleProductImageUpload(product, event.target.files?.[0])}
+                      />
+                    </label>
+                  </div>
                   <div className="mt-2 grid grid-cols-3 gap-2">
                     <input
                       type="number"
@@ -2345,7 +2656,7 @@ function AdminDashboard({
                       <option value="unavailable">Indisponível</option>
                     </select>
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="mt-3 grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => saveProduct(product)}
@@ -2356,10 +2667,17 @@ function AdminDashboard({
                     </button>
                     <button
                       type="button"
+                      onClick={() => duplicateProduct(product)}
+                      className="rounded-lg border border-purple-200/15 bg-white/5 px-3 py-2 text-xs font-black text-purple-100"
+                    >
+                      Duplicar
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => removeProduct(product.id)}
                       className="rounded-lg border border-red-300/20 bg-red-400/10 px-3 py-2 text-xs font-black text-red-100"
                     >
-                      Remover
+                      Excluir
                     </button>
                   </div>
                 </div>
@@ -2370,14 +2688,52 @@ function AdminDashboard({
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <AdminPanel title="Gerenciamento de usuários" icon={Users}>
-          <DateTable
-            headers={['Nome', 'Gmail', 'Discord', 'Role', 'Compras']}
-            rows={adminUsers.map((user) => [user.name, user.email, user.discord, user.role, user.orders])}
-          />
+        <AdminPanel title="Gerenciamento de usuários" icon={Users} id="admin-usuarios">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[680px] text-left text-sm">
+              <thead className="text-purple-100/62">
+                <tr>
+                  {['Nome', 'Gmail', 'Discord', 'Cargo', 'Compras'].map((header) => (
+                    <th key={header} className="border-b border-purple-200/10 px-3 py-3 font-black">
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {adminUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="px-3 py-8 text-center text-purple-100/58">
+                      Nenhum usuário ainda.
+                    </td>
+                  </tr>
+                ) : (
+                  adminUsers.map((user) => (
+                    <tr key={user.id || user.email} className="border-b border-purple-200/8">
+                      <td className="px-3 py-4 font-black">{user.name}</td>
+                      <td className="px-3 py-4">{user.email}</td>
+                      <td className="px-3 py-4">{user.discord}</td>
+                      <td className="px-3 py-4">
+                        <select
+                          value={user.role || 'usuario'}
+                          onChange={(event) => updateUserRole(user.id, event.target.value)}
+                          className="rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 text-sm font-bold outline-none focus:border-ryuu-neon"
+                        >
+                          <option value="usuario">Usuário</option>
+                          <option value="cliente">Cliente</option>
+                          <option value="administrador">Administrador</option>
+                        </select>
+                      </td>
+                      <td className="px-3 py-4">{user.orders}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </AdminPanel>
 
-        <AdminPanel title="Gerenciamento de cupons" icon={Gift}>
+        <AdminPanel title="Gerenciamento de cupons" icon={Gift} id="admin-cupons">
           <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_0.8fr_0.8fr_auto]">
             <input
               value={couponDraft.code}
@@ -2411,7 +2767,7 @@ function AdminDashboard({
             <table className="w-full min-w-[560px] text-left text-sm">
               <thead className="text-purple-100/62">
                 <tr>
-                  {['Código', 'Tipo', 'Valor', 'Limite', 'Status', 'Ação'].map((header) => (
+                  {['Código', 'Tipo', 'Valor', 'Limite', 'Status', 'Ações'].map((header) => (
                     <th key={header} className="border-b border-purple-200/10 px-3 py-3 font-black">
                       {header}
                     </th>
@@ -2427,13 +2783,22 @@ function AdminDashboard({
                     <td className="px-3 py-4">{coupon.limit}</td>
                     <td className="px-3 py-4">{coupon.status}</td>
                     <td className="px-3 py-4">
-                      <button
-                        type="button"
-                        onClick={() => toggleCoupon(coupon.code)}
-                        className="rounded-lg bg-white/6 px-3 py-2 text-xs font-black text-purple-100 hover:shadow-glow-sm"
-                      >
-                        {coupon.status === 'Ativo' ? 'Desativar' : 'Ativar'}
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleCoupon(coupon.code)}
+                          className="rounded-lg bg-white/6 px-3 py-2 text-xs font-black text-purple-100 hover:shadow-glow-sm"
+                        >
+                          {coupon.status === 'Ativo' ? 'Desativar' : 'Ativar'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteCoupon(coupon.code)}
+                          className="rounded-lg border border-red-300/20 bg-red-400/10 px-3 py-2 text-xs font-black text-red-100"
+                        >
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -2443,27 +2808,6 @@ function AdminDashboard({
         </AdminPanel>
       </div>
 
-      <div className="mt-6">
-        <AdminPanel title="Integrações de produção" icon={Settings}>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
-            {[
-              'Stripe Checkout',
-              'Mercado Pago',
-              'Webhook Discord',
-              'Gmail automático',
-              'Cupons no backend',
-            ].map((item) => (
-              <div key={item} className="rounded-lg border border-purple-200/12 bg-black/24 p-4">
-                <div className="mb-3 grid h-10 w-10 place-items-center rounded-lg bg-ryuu-neon/14 text-ryuu-soft">
-                  <Settings size={18} />
-                </div>
-                <p className="font-black">{item}</p>
-                <p className="mt-1 text-xs leading-5 text-purple-100/58">Pronto para conectar via backend/API.</p>
-              </div>
-            ))}
-          </div>
-        </AdminPanel>
-      </div>
     </section>
   );
 }
@@ -2483,9 +2827,9 @@ function AdminStat({ icon: Icon, label, value }) {
   );
 }
 
-function AdminPanel({ title, icon: Icon, children }) {
+function AdminPanel({ title, icon: Icon, children, id }) {
   return (
-    <div className="glass rounded-lg p-6">
+    <div id={id} className="glass scroll-mt-24 rounded-lg p-6">
       <div className="mb-5 flex items-center gap-3">
         <div className="grid h-10 w-10 place-items-center rounded-lg bg-ryuu-neon/18 text-ryuu-soft">
           <Icon size={20} />
