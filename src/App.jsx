@@ -41,8 +41,8 @@ import {
   Zap,
   X,
 } from 'lucide-react';
-import iconGif from '../Icon/RYUU_ICON.gif';
-import bannerGif from '../Banner/RYUU_BANNER.gif';
+import iconGif from '../Icon/RYUU_ICON.png';
+import bannerGif from '../Banner/RYUU_BANNER.png';
 import discordIcon from './assets/discord-brand.svg';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { appConfig, integrations } from './lib/config';
