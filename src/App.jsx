@@ -1275,7 +1275,7 @@ function Hero({ setActiveView }) {
           alt="BANNER GIF Ryuu Cheats"
           decoding="async"
           fetchPriority="high"
-          className="h-36 w-full object-cover sm:h-52 lg:h-72"
+          className="h-28 w-full object-cover sm:h-44 lg:h-60"
         />
       </div>
       <div className="py-12">
