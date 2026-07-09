@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -223,6 +223,7 @@ function App() {
   const [userRole, setUserRole] = useState('usuario');
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [pixPayment, setPixPayment] = useState(null);
   const [orderStatus, setOrderStatus] = useState(orders);
   const [registeredUsers, setRegisteredUsers] = useState(users);
   const [adminCoupons, setAdminCoupons] = useState(initialAdminCoupons);
@@ -544,15 +545,65 @@ function App() {
       price: item.price,
     })),
     customer: {
-      name: profile.name || currentUser.email?.split('@')[0] || 'Cliente Ryuu',
-      email: currentUser.email || profile.email || '',
+      name: profile?.name || currentUser.email?.split('@')[0] || 'Cliente Ryuu',
+      email: currentUser.email || profile?.email || '',
       discord: discordUser.trim(),
     },
-    coupon: activeCoupon.code || null,
+    coupon: activeCoupon?.code || null,
     subtotal,
     discount,
     total,
   });
+
+  const startPixPayment = async () => {
+    if (!discordUser.trim()) {
+      notify('Informe seu Discord antes de pagar.', 'warning');
+      return;
+    }
+
+    if (!integrations.mercadoPago) {
+      notify('Pagamento não configurado.', 'error');
+      return;
+    }
+
+    setIsProcessingPayment(true);
+    setPixPayment(null);
+
+    try {
+      const order = await createOrder('Pix');
+      if (!order) throw new Error('Pedido não foi criado.');
+
+      const payload = buildCheckoutPayload(order);
+      await Promise.allSettled([notifyDiscordOrder(payload), notifyEmailOrder(payload)]);
+
+      const result = await createMercadoPagoPayment({
+        ...payload,
+        payment: {
+          payment_method_id: 'pix',
+          transaction_amount: total,
+          payer: {
+            email: currentUser.email || profile?.email || payload.customer.email,
+          },
+        },
+      });
+
+      const transactionData = result.point_of_interaction?.transaction_data || {};
+      setPixPayment({
+        orderId: order.id,
+        paymentId: result.id,
+        qrCode: transactionData.qr_code || '',
+        qrCodeBase64: transactionData.qr_code_base64 || '',
+        ticketUrl: transactionData.ticket_url || '',
+        status: result.status || 'pending',
+      });
+
+      notify('Pix gerado. Aguardando pagamento.', 'warning');
+    } catch (error) {
+      notify(error.message || 'Erro ao gerar Pix.', 'error');
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
 
   const startMercadoPagoPayment = async (paymentDate) => {
     if (!integrations.mercadoPago) {
@@ -580,6 +631,7 @@ function App() {
       if (status === 'approved') {
         notify('Pagamento aprovado. Pedido enviado para entrega.');
         setCheckoutSuccess(true);
+        setPixPayment(null);
         setCart([]);
         return result;
       }
@@ -892,10 +944,13 @@ function App() {
             deliveryHours={deliveryHours}
             discordUser={discordUser}
             setDiscordUser={setDiscordUser}
+            pixPayment={pixPayment}
+            startPixPayment={startPixPayment}
             checkoutSuccess={checkoutSuccess}
             startMercadoPagoPayment={startMercadoPagoPayment}
             isProcessingPayment={isProcessingPayment}
             setActiveView={setActiveView}
+            notify={notify}
           />
         )}
 
@@ -1017,20 +1072,20 @@ function Navbar({
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-purple-300/10 bg-ryuu-black/82 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-pink-300/10 bg-ryuu-black/82 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         <button className="flex items-center gap-3" onClick={() => navigate('home')} type="button">
           <img
             src={iconGif}
-            alt="ÍCONE GIF Ryuu Group"
+            alt="ÍCONE GIF Ryuu Cheats"
             decoding="async"
             className="h-12 w-12 rounded-lg border border-ryuu-neon/40 object-cover shadow-glow-sm"
           />
           <div className="text-left">
             <p className="bg-gradient-to-r from-white via-ryuu-soft to-ryuu-neon bg-clip-text text-xl font-black uppercase tracking-wide text-transparent">
-              Ryuu Group
+              Ryuu Cheats
             </p>
-            <p className="text-xs font-medium text-purple-200/70">Blood Strike Panels</p>
+            <p className="text-xs font-medium text-pink-200/70">Blood Strike Panels</p>
           </div>
         </button>
 
@@ -1041,7 +1096,7 @@ function Navbar({
               type="button"
               onClick={() => navigate(item.id)}
               className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                activeView === item.id ? 'bg-ryuu-neon text-white shadow-glow-sm' : 'text-purple-100/78 hover:bg-white/8'
+                activeView === item.id ? 'bg-ryuu-neon text-white shadow-glow-sm' : 'text-pink-100/78 hover:bg-white/8'
               }`}
             >
               {item.label}
@@ -1053,7 +1108,7 @@ function Navbar({
           <button
             type="button"
             onClick={() => setIsCartOpen(true)}
-            className="relative rounded-full border border-purple-200/15 bg-white/5 p-3 text-purple-100 transition hover:border-ryuu-neon hover:text-white hover:shadow-glow-sm"
+            className="relative rounded-full border border-pink-200/15 bg-white/5 p-3 text-pink-100 transition hover:border-ryuu-neon hover:text-white hover:shadow-glow-sm"
             aria-label="Abrir carrinho"
           >
             <ShoppingCart size={19} />
@@ -1075,15 +1130,15 @@ function Navbar({
             </button>
 
             {isLoggedIn && userMenuOpen && (
-              <div className="absolute right-0 mt-3 w-56 overflow-hidden rounded-lg border border-purple-200/15 bg-ryuu-ink shadow-glow">
-                <div className="border-b border-purple-200/10 px-4 py-3">
+              <div className="absolute right-0 mt-3 w-56 overflow-hidden rounded-lg border border-pink-200/15 bg-ryuu-ink shadow-glow">
+                <div className="border-b border-pink-200/10 px-4 py-3">
                   <p className="truncate text-sm font-black">{userName}</p>
                   <p className="text-xs font-semibold text-ryuu-soft">{roleLabels[userRole]}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => openAccount('perfil')}
-                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-purple-100 hover:bg-white/8"
+                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-pink-100 hover:bg-white/8"
                 >
                   <User size={16} />
                   Perfil
@@ -1091,7 +1146,7 @@ function Navbar({
                 <button
                   type="button"
                   onClick={() => openAccount('pedidos')}
-                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-purple-100 hover:bg-white/8"
+                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-pink-100 hover:bg-white/8"
                 >
                   <ShoppingCart size={16} />
                   Pedidos
@@ -1099,7 +1154,7 @@ function Navbar({
                 <button
                   type="button"
                   onClick={() => openAccount('entrega')}
-                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-purple-100 hover:bg-white/8"
+                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-pink-100 hover:bg-white/8"
                 >
                   <PackageCheck size={16} />
                   Entrega
@@ -1107,7 +1162,7 @@ function Navbar({
                 <button
                   type="button"
                   onClick={() => openAccount('suporte')}
-                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-purple-100 hover:bg-white/8"
+                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-pink-100 hover:bg-white/8"
                 >
                   <Headphones size={16} />
                   Suporte
@@ -1116,7 +1171,7 @@ function Navbar({
                   <button
                     type="button"
                     onClick={() => navigate('admin')}
-                    className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-purple-100 hover:bg-white/8"
+                    className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-pink-100 hover:bg-white/8"
                   >
                     <ShieldCheck size={16} />
                     Admin
@@ -1125,7 +1180,7 @@ function Navbar({
                 <button
                   type="button"
                   onClick={handleSignOut}
-                  className="flex w-full items-center gap-2 border-t border-purple-200/10 px-4 py-3 text-left text-sm font-bold text-red-200 hover:bg-red-500/10"
+                  className="flex w-full items-center gap-2 border-t border-pink-200/10 px-4 py-3 text-left text-sm font-bold text-red-200 hover:bg-red-500/10"
                 >
                   <LogOut size={16} />
                   Sair
@@ -1136,7 +1191,7 @@ function Navbar({
           <button
             type="button"
             onClick={() => setMobileMenuOpen((value) => !value)}
-            className="rounded-full border border-purple-200/15 bg-white/5 p-3 md:hidden"
+            className="rounded-full border border-pink-200/15 bg-white/5 p-3 md:hidden"
             aria-label="Abrir menu"
           >
             {mobileMenuOpen ? <X size={19} /> : <Menu size={19} />}
@@ -1145,14 +1200,14 @@ function Navbar({
       </div>
 
       {mobileMenuOpen && (
-        <div className="border-t border-purple-300/10 bg-ryuu-ink px-4 py-3 md:hidden">
+        <div className="border-t border-pink-300/10 bg-ryuu-ink px-4 py-3 md:hidden">
           <div className="grid gap-2">
             {navItems.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => navigate(item.id)}
-                className="rounded-lg px-3 py-2 text-left text-sm font-semibold text-purple-100 hover:bg-white/8"
+                className="rounded-lg px-3 py-2 text-left text-sm font-semibold text-pink-100 hover:bg-white/8"
               >
                 {item.label}
               </button>
@@ -1181,7 +1236,7 @@ function Navbar({
                   key={tab}
                   type="button"
                   onClick={() => openAccount(tab)}
-                  className="rounded-lg px-3 py-2 text-left text-sm font-semibold text-purple-100 hover:bg-white/8"
+                  className="rounded-lg px-3 py-2 text-left text-sm font-semibold text-pink-100 hover:bg-white/8"
                 >
                   {label}
                 </button>
@@ -1190,7 +1245,7 @@ function Navbar({
               <button
                 type="button"
                 onClick={() => navigate('admin')}
-                className="rounded-lg px-3 py-2 text-left text-sm font-semibold text-purple-100 hover:bg-white/8"
+                className="rounded-lg px-3 py-2 text-left text-sm font-semibold text-pink-100 hover:bg-white/8"
               >
                 Admin
               </button>
@@ -1217,7 +1272,7 @@ function Hero({ setActiveView }) {
       <div className="overflow-hidden rounded-lg border border-ryuu-neon/25 bg-ryuu-ink shadow-glow">
         <img
           src={bannerGif}
-          alt="BANNER GIF Ryuu Group"
+          alt="BANNER GIF Ryuu Cheats"
           decoding="async"
           fetchPriority="high"
           className="h-36 w-full object-cover sm:h-52 lg:h-72"
@@ -1226,11 +1281,11 @@ function Hero({ setActiveView }) {
       <div className="py-12">
         <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-ryuu-neon/25 bg-ryuu-deep/60 px-4 py-2 text-sm font-semibold text-ryuu-soft">
           <Sparkles size={16} />
-          Ryuu Group
+          Ryuu Cheats
         </div>
         <h1 className="max-w-4xl text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">
           Paineis para Blood Strike com entrega rápida e suporte direto da{' '}
-          <span className="bg-gradient-to-r from-ryuu-soft to-ryuu-neon bg-clip-text text-transparent">Ryuu Group</span>
+          <span className="bg-gradient-to-r from-ryuu-soft to-ryuu-neon bg-clip-text text-transparent">Ryuu Cheats</span>
         </h1>
       </div>
     </section>
@@ -1243,7 +1298,7 @@ function ProductCatalog({ products, addToCart, setSelectedProduct, standalone = 
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="text-sm font-black uppercase tracking-[0.24em] text-ryuu-soft">Catálogo</p>
-          <h2 className="mt-2 text-3xl font-black sm:text-4xl">Paineis Ryuu Group</h2>
+          <h2 className="mt-2 text-3xl font-black sm:text-4xl">Paineis Ryuu Cheats</h2>
         </div>
       </div>
 
@@ -1262,7 +1317,7 @@ function ProductCatalog({ products, addToCart, setSelectedProduct, standalone = 
               <h3 className="text-2xl font-black">{product.name}</h3>
               <StatusBadge available={product.available} />
             </div>
-            <p className="min-h-20 text-sm leading-6 text-purple-100/70">
+            <p className="min-h-20 text-sm leading-6 text-pink-100/70">
               {product.shortDescription || product.description}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -1278,13 +1333,13 @@ function ProductCatalog({ products, addToCart, setSelectedProduct, standalone = 
             <div className="my-5 rounded-lg border border-ryuu-neon/18 bg-ryuu-neon/10 p-4">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-ryuu-soft">Acesso vitalício</p>
               <p className="mt-1 text-3xl font-black">{formatCurrency(product.price)}</p>
-              {product.available && <p className="mt-2 text-sm text-purple-100/70">Estoque: {product.stock}</p>}
+              {product.available && <p className="mt-2 text-sm text-pink-100/70">Estoque: {product.stock}</p>}
             </div>
             <div className="grid gap-2">
               <button
                 type="button"
                 onClick={() => setSelectedProduct(product)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-ryuu-neon/30 bg-white/5 px-4 py-3 font-black text-purple-50 transition hover:shadow-glow-sm"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-ryuu-neon/30 bg-white/5 px-4 py-3 font-black text-pink-50 transition hover:shadow-glow-sm"
               >
                 <FileText size={18} />
                 Ver detalhes
@@ -1311,14 +1366,14 @@ function ProductImage({ product, className = 'h-40' }) {
   const isImageUrl = /^https?:\/\//i.test(image) || image.startsWith('data:image/');
 
   return (
-    <div className={`overflow-hidden rounded-lg border border-purple-200/12 bg-black/30 ${className}`}>
+    <div className={`overflow-hidden rounded-lg border border-pink-200/12 bg-black/30 ${className}`}>
       {isImageUrl ? (
         <img src={image} alt={product.name} className="h-full w-full object-cover" loading="lazy" />
       ) : (
         <div className="grid h-full place-items-center text-center">
           <div>
             <Crown className="mx-auto mb-2 text-ryuu-soft" size={30} />
-            <p className="px-4 text-sm font-bold text-purple-100/68">{image || 'Imagem do produto'}</p>
+            <p className="px-4 text-sm font-bold text-pink-100/68">{image || 'Imagem do produto'}</p>
           </div>
         </div>
       )}
@@ -1338,8 +1393,8 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
 
   return (
     <div className="fixed inset-0 z-[65] grid place-items-center bg-black/80 px-4 py-6 backdrop-blur-sm">
-      <div className="purple-scrollbar glass max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-lg">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-purple-200/10 bg-ryuu-black/94 p-5 backdrop-blur">
+      <div className="pink-scrollbar glass max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-lg">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-pink-200/10 bg-ryuu-black/94 p-5 backdrop-blur">
           <div>
             <p className="text-sm font-black uppercase tracking-[0.22em] text-ryuu-soft">Detalhes do produto</p>
             <h2 className="mt-1 text-3xl font-black">{product.name}</h2>
@@ -1357,7 +1412,7 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
                 Acesso vitalício
               </p>
               <p className="mt-1 text-4xl font-black">{formatCurrency(product.price)}</p>
-              <p className="mt-2 text-sm text-purple-100/70">Estoque: {product.stock}</p>
+              <p className="mt-2 text-sm text-pink-100/70">Estoque: {product.stock}</p>
             </div>
             <button
               type="button"
@@ -1380,7 +1435,7 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
                     className={`rounded-full px-4 py-2 text-sm font-black transition ${
                       activeTab === tab.id
                         ? 'bg-ryuu-neon text-white shadow-glow-sm'
-                        : 'border border-purple-200/12 bg-white/5 text-purple-100/72 hover:border-ryuu-neon'
+                        : 'border border-pink-200/12 bg-white/5 text-pink-100/72 hover:border-ryuu-neon'
                     }`}
                 >
                   {tab.label}
@@ -1389,9 +1444,9 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
             </div>
 
             {activeTab === 'overview' && (
-              <div className="rounded-lg border border-purple-200/12 bg-black/22 p-5">
+              <div className="rounded-lg border border-pink-200/12 bg-black/22 p-5">
                 <h3 className="text-2xl font-black">Smoke External</h3>
-                <p className="mt-3 leading-7 text-purple-100/76">{product.shortDescription || product.description}</p>
+                <p className="mt-3 leading-7 text-pink-100/76">{product.shortDescription || product.description}</p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <DetailPill icon={BadgeCheck} label="Status" value={product.available ? 'Disponível' : 'Indisponível'} />
                   <DetailPill icon={KeyRound} label="Acesso" value="Vitalício" />
@@ -1404,9 +1459,9 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
             {activeTab === 'features' && (
               <div className="grid gap-4 sm:grid-cols-2">
                 {(product.features || []).map((group) => (
-                  <div key={group.title} className="rounded-lg border border-purple-200/12 bg-black/22 p-5">
+                  <div key={group.title} className="rounded-lg border border-pink-200/12 bg-black/22 p-5">
                     <h3 className="text-lg font-black text-ryuu-soft">{group.title}</h3>
-                    <ul className="mt-3 grid gap-2 text-sm text-purple-100/76">
+                    <ul className="mt-3 grid gap-2 text-sm text-pink-100/76">
                       {group.items.map((item) => (
                         <li key={item} className="flex items-center gap-2">
                           <Check size={15} className="text-ryuu-soft" />
@@ -1420,29 +1475,29 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
             )}
 
             {activeTab === 'delivery' && (
-              <div className="rounded-lg border border-purple-200/12 bg-black/22 p-5">
+              <div className="rounded-lg border border-pink-200/12 bg-black/22 p-5">
                 <h3 className="text-2xl font-black">Entrega manual monitorada</h3>
-                <p className="mt-3 leading-7 text-purple-100/76">
-                  Após a confirmação do pagamento, a equipe Ryuu Group envia o acesso manualmente pelo Discord informado
+                <p className="mt-3 leading-7 text-pink-100/76">
+                  Após a confirmação do pagamento, a equipe Ryuu Cheats envia o acesso manualmente pelo Discord informado
                   no checkout em até {deliveryHours} horas.
                 </p>
-                <div className="mt-5 rounded-lg border border-ryuu-neon/20 bg-ryuu-neon/10 p-4 text-sm font-bold text-purple-100">
+                <div className="mt-5 rounded-lg border border-ryuu-neon/20 bg-ryuu-neon/10 p-4 text-sm font-bold text-pink-100">
                   Informe seu usuario do Discord corretamente no checkout para evitar atraso na entrega.
                 </div>
               </div>
             )}
 
             {activeTab === 'terms' && (
-              <div className="rounded-lg border border-purple-200/12 bg-black/22 p-5">
+              <div className="rounded-lg border border-pink-200/12 bg-black/22 p-5">
                 <h3 className="text-2xl font-black">Compra clara e suporte direto</h3>
                 <div className="mt-4 grid gap-3">
                   {[
                     'Pagamento único, sem assinatura ou renovação.',
                     'Produtos indisponíveis ficam bloqueados para compra.',
                     'Pedido aparece no dashboard do cliente após confirmação.',
-                    'Suporte e dúvidas pelo Discord oficial da Ryuu Group.',
+                    'Suporte e dúvidas pelo Discord oficial da Ryuu Cheats.',
                   ].map((item) => (
-                    <div key={item} className="flex gap-3 rounded-lg bg-white/[0.035] p-3 text-purple-100/78">
+                    <div key={item} className="flex gap-3 rounded-lg bg-white/[0.035] p-3 text-pink-100/78">
                       <ShieldCheck size={18} className="mt-0.5 shrink-0 text-ryuu-soft" />
                       <span>{item}</span>
                     </div>
@@ -1459,12 +1514,12 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
 
 function DetailPill({ icon: Icon, label, value }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-purple-200/12 bg-white/[0.035] p-3">
+    <div className="flex items-center gap-3 rounded-lg border border-pink-200/12 bg-white/[0.035] p-3">
       <div className="grid h-10 w-10 place-items-center rounded-lg bg-ryuu-neon/14 text-ryuu-soft">
         <Icon size={18} />
       </div>
       <div>
-        <p className="text-xs font-bold text-purple-100/52">{label}</p>
+        <p className="text-xs font-bold text-pink-100/52">{label}</p>
         <p className="font-black">{value}</p>
       </div>
     </div>
@@ -1506,13 +1561,13 @@ function HomeSalesSections({ deliveryHours, setActiveView }) {
         {benefits.map((item) => (
           <div
             key={item.title}
-            className="rounded-lg border border-purple-200/12 bg-white/[0.035] p-5 transition hover:border-ryuu-neon/45 hover:shadow-glow-sm"
+            className="rounded-lg border border-pink-200/12 bg-white/[0.035] p-5 transition hover:border-ryuu-neon/45 hover:shadow-glow-sm"
           >
             <div className="mb-3 grid h-10 w-10 place-items-center rounded-lg bg-ryuu-neon/18 text-ryuu-soft">
               <item.icon size={20} />
             </div>
             <h3 className="text-lg font-black">{item.title}</h3>
-            <p className="mt-1 text-sm leading-6 text-purple-100/70">{item.text}</p>
+            <p className="mt-1 text-sm leading-6 text-pink-100/70">{item.text}</p>
           </div>
         ))}
       </div>
@@ -1524,12 +1579,12 @@ function HomeSalesSections({ deliveryHours, setActiveView }) {
         </div>
         <div className="grid gap-3">
           {faqs.map((item) => (
-            <details key={item.q} className="rounded-lg border border-purple-200/12 bg-black/24 p-4">
-              <summary className="flex cursor-pointer items-center gap-3 font-black text-purple-50">
+            <details key={item.q} className="rounded-lg border border-pink-200/12 bg-black/24 p-4">
+              <summary className="flex cursor-pointer items-center gap-3 font-black text-pink-50">
                 <HelpCircle size={18} className="text-ryuu-soft" />
                 {item.q}
               </summary>
-              <p className="mt-3 pl-8 leading-7 text-purple-100/70">{item.a}</p>
+              <p className="mt-3 pl-8 leading-7 text-pink-100/70">{item.a}</p>
             </details>
           ))}
         </div>
@@ -1573,11 +1628,11 @@ function CartDrawer({
         onClick={onClose}
       />
       <aside
-        className={`purple-scrollbar absolute right-0 top-0 flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-ryuu-neon/25 bg-ryuu-black shadow-glow transition-transform duration-300 ${
+        className={`pink-scrollbar absolute right-0 top-0 flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-ryuu-neon/25 bg-ryuu-black shadow-glow transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between border-b border-purple-200/10 p-5">
+        <div className="flex items-center justify-between border-b border-pink-200/10 p-5">
           <div>
             <p className="text-sm font-bold text-ryuu-soft">Carrinho</p>
             <h2 className="text-2xl font-black">Resumo do pedido</h2>
@@ -1589,17 +1644,17 @@ function CartDrawer({
 
         <div className="flex-1 p-5">
           {!cart.length ? (
-            <div className="grid min-h-64 place-items-center rounded-lg border border-dashed border-purple-200/18 text-center">
+            <div className="grid min-h-64 place-items-center rounded-lg border border-dashed border-pink-200/18 text-center">
               <div>
-                <ShoppingCart className="mx-auto mb-3 text-purple-200/60" size={36} />
+                <ShoppingCart className="mx-auto mb-3 text-pink-200/60" size={36} />
                 <p className="font-bold">Seu carrinho está vazio.</p>
-                <p className="mt-1 text-sm text-purple-100/60">Adicione um produto disponível para continuar.</p>
+                <p className="mt-1 text-sm text-pink-100/60">Adicione um produto disponível para continuar.</p>
               </div>
             </div>
           ) : (
             <div className="space-y-4">
               {cart.map((item) => (
-                <div key={item.id} className="rounded-lg border border-purple-200/12 bg-white/[0.035] p-4">
+                <div key={item.id} className="rounded-lg border border-pink-200/12 bg-white/[0.035] p-4">
                   <div className="flex justify-between gap-3">
                     <div>
                       <p className="font-black">{item.name}</p>
@@ -1608,7 +1663,7 @@ function CartDrawer({
                     <p className="font-black">{formatCurrency(item.price)}</p>
                   </div>
                   <div className="mt-4 flex items-center justify-between">
-                    <div className="flex items-center rounded-full border border-purple-200/15">
+                    <div className="flex items-center rounded-full border border-pink-200/15">
                       <button type="button" onClick={() => updataQuantity(item.id, item.quantity - 1)} className="px-3 py-1">
                         -
                       </button>
@@ -1618,7 +1673,7 @@ function CartDrawer({
                         max={item.stock || undefined}
                         value={item.quantity}
                         onChange={(event) => updataQuantity(item.id, event.target.value)}
-                        className="w-12 border-x border-purple-200/15 bg-transparent px-1 py-1 text-center text-sm font-bold outline-none"
+                        className="w-12 border-x border-pink-200/15 bg-transparent px-1 py-1 text-center text-sm font-bold outline-none"
                         aria-label={`Quantidade de ${item.name}`}
                       />
                       <button type="button" onClick={() => updataQuantity(item.id, item.quantity + 1)} className="px-3 py-1">
@@ -1638,8 +1693,8 @@ function CartDrawer({
             </div>
           )}
 
-          <div className="mt-5 rounded-lg border border-purple-200/12 bg-black/22 p-4">
-            <label htmlFor="coupon" className="text-sm font-black text-purple-100">
+          <div className="mt-5 rounded-lg border border-pink-200/12 bg-black/22 p-4">
+            <label htmlFor="coupon" className="text-sm font-black text-pink-100">
               Cupom de desconto
             </label>
             <input
@@ -1647,7 +1702,7 @@ function CartDrawer({
               value={couponCode}
               onChange={(event) => setCouponCode(event.target.value)}
               placeholder="Ex: RYUU10"
-              className="mt-2 w-full rounded-lg border border-purple-200/15 bg-black/40 px-4 py-3 text-sm outline-none transition focus:border-ryuu-neon"
+              className="mt-2 w-full rounded-lg border border-pink-200/15 bg-black/40 px-4 py-3 text-sm outline-none transition focus:border-ryuu-neon"
             />
             {couponCode && (
               <p className={`mt-2 text-sm font-semibold ${activeCoupon ? 'text-emerald-300' : 'text-red-200'}`}>
@@ -1657,7 +1712,7 @@ function CartDrawer({
           </div>
         </div>
 
-        <div className="border-t border-purple-200/10 p-5">
+        <div className="border-t border-pink-200/10 p-5">
           <PriceRow label="Subtotal" value={subtotal} />
           <PriceRow label="Desconto" value={discount} negative />
           <div className="mt-3 flex items-center justify-between text-xl font-black">
@@ -1679,7 +1734,7 @@ function CartDrawer({
 
 function PriceRow({ label, value, negative = false }) {
   return (
-    <div className="mt-2 flex items-center justify-between text-sm text-purple-100/72">
+    <div className="mt-2 flex items-center justify-between text-sm text-pink-100/72">
       <span>{label}</span>
       <span>
         {negative && value > 0 ? '-' : ''}
@@ -1703,22 +1758,22 @@ function AuthModal({ authTab, setAuthTab, onClose, handleAuth, handleDiscordAuth
           <div className="mx-auto grid h-24 w-24 place-items-center rounded-2xl border border-ryuu-neon/45 bg-ryuu-deep/35 p-2 shadow-glow">
             <img
               src={iconGif}
-              alt="Ryuu Group"
+              alt="Ryuu Cheats"
               className="h-full w-full rounded-xl object-cover"
             />
           </div>
-          <p className="mt-4 text-sm font-black uppercase tracking-[0.18em] text-ryuu-soft">Ryuu Group</p>
+          <p className="mt-4 text-sm font-black uppercase tracking-[0.18em] text-ryuu-soft">Ryuu Cheats</p>
           <h2 className="mt-1 text-3xl font-black">{isLogin ? 'Entrar' : 'Criar conta'}</h2>
         </div>
 
-        <div className="mb-5 grid grid-cols-2 rounded-lg border border-purple-200/12 bg-black/24 p-1">
+        <div className="mb-5 grid grid-cols-2 rounded-lg border border-pink-200/12 bg-black/24 p-1">
           {['login', 'cadastro'].map((tab) => (
             <button
               key={tab}
               type="button"
               onClick={() => setAuthTab(tab)}
               className={`rounded-md py-2 text-sm font-black capitalize ${
-                authTab === tab ? 'bg-ryuu-neon text-white' : 'text-purple-100/68'
+                authTab === tab ? 'bg-ryuu-neon text-white' : 'text-pink-100/68'
               }`}
             >
               {tab}
@@ -1734,16 +1789,16 @@ function AuthModal({ authTab, setAuthTab, onClose, handleAuth, handleDiscordAuth
           <AuthInput label="Senha" name="password" type="password" placeholder="Sua senha" autoComplete="current-password" />
           <button
             type="submit"
-            className="rounded-lg border border-ryuu-neon/35 bg-white/5 px-4 py-3 text-center font-black text-purple-50 transition hover:shadow-glow-sm"
+            className="rounded-lg border border-ryuu-neon/35 bg-white/5 px-4 py-3 text-center font-black text-pink-50 transition hover:shadow-glow-sm"
           >
             {isLogin ? 'Entrar' : 'Criar conta'}
           </button>
         </form>
 
-        <div className="my-5 flex items-center gap-3 text-xs font-black uppercase tracking-[0.2em] text-purple-100/45">
-          <span className="h-px flex-1 bg-purple-200/12" />
+        <div className="my-5 flex items-center gap-3 text-xs font-black uppercase tracking-[0.2em] text-pink-100/45">
+          <span className="h-px flex-1 bg-pink-200/12" />
           ou
-          <span className="h-px flex-1 bg-purple-200/12" />
+          <span className="h-px flex-1 bg-pink-200/12" />
         </div>
 
         <div className="grid gap-3">
@@ -1763,11 +1818,11 @@ function AuthModal({ authTab, setAuthTab, onClose, handleAuth, handleDiscordAuth
 
 function AuthInput({ label, ...props }) {
   return (
-    <label className="grid gap-1 text-sm font-bold text-purple-100">
+    <label className="grid gap-1 text-sm font-bold text-pink-100">
       {label}
       <input
         required
-        className="rounded-lg border border-purple-200/15 bg-black/42 px-4 py-3 font-normal outline-none transition focus:border-ryuu-neon"
+        className="rounded-lg border border-pink-200/15 bg-black/42 px-4 py-3 font-normal outline-none transition focus:border-ryuu-neon"
         {...props}
       />
     </label>
@@ -1833,7 +1888,6 @@ function MercadoPagoBrick({ publicKey, amount, enabled, disabled, onPayment }) {
             },
             paymentMethods: {
               creditCard: 'all',
-              bankTransfer: 'all',
               maxInstallments: 1,
             },
           },
@@ -1863,19 +1917,16 @@ function MercadoPagoBrick({ publicKey, amount, enabled, disabled, onPayment }) {
 
   if (!enabled) {
     return (
-      <div className="mt-4 rounded-lg border border-purple-200/12 bg-black/24 p-4 text-sm font-bold text-purple-100/70">
+      <div className="mt-4 rounded-lg border border-pink-200/12 bg-black/24 p-4 text-sm font-bold text-pink-100/70">
         Pagamento indisponível no momento.
       </div>
     );
   }
 
   return (
-    <div className={`mt-5 rounded-lg border border-purple-200/12 bg-black/24 p-3 ${disabled ? 'opacity-65' : ''}`}>
+    <div className={`mt-5 rounded-lg border border-pink-200/12 bg-black/24 p-3 ${disabled ? 'opacity-65' : ''}`}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          <span className="rounded-full border border-ryuu-neon/25 bg-ryuu-neon/10 px-3 py-1 text-xs font-black text-ryuu-soft">
-            Pix
-          </span>
+        <div>
           <span className="rounded-full border border-ryuu-neon/25 bg-ryuu-neon/10 px-3 py-1 text-xs font-black text-ryuu-soft">
             Cartão
           </span>
@@ -1892,6 +1943,65 @@ function MercadoPagoBrick({ publicKey, amount, enabled, disabled, onPayment }) {
   );
 }
 
+function PixPaymentBox({ pixPayment, disabled, isProcessingPayment, startPixPayment, notify }) {
+  const copyPix = async () => {
+    if (!pixPayment?.qrCode) return;
+    await navigator.clipboard.writeText(pixPayment.qrCode);
+    notify('Pix copiado.');
+  };
+
+  return (
+    <div className="mt-5 rounded-lg border border-pink-200/12 bg-black/24 p-4">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <div>
+          <p className="font-black">Pix</p>
+          <p className="text-xs font-bold text-pink-100/58">QR Code e copia e cola automático.</p>
+        </div>
+        <button
+          type="button"
+          onClick={startPixPayment}
+          disabled={disabled || isProcessingPayment}
+          className="rounded-lg bg-gradient-to-r from-ryuu-violet to-ryuu-neon px-4 py-3 text-sm font-black shadow-glow-sm disabled:cursor-not-allowed disabled:from-zinc-700 disabled:to-zinc-600 disabled:text-zinc-300 disabled:shadow-none"
+        >
+          {isProcessingPayment ? 'Gerando...' : 'Gerar Pix'}
+        </button>
+      </div>
+
+      {pixPayment && (
+        <div className="mt-4 grid gap-4">
+          {pixPayment.qrCodeBase64 && (
+            <div className="mx-auto w-full max-w-56 rounded-lg bg-white p-3">
+              <img
+                src={`data:image/png;base64,${pixPayment.qrCodeBase64}`}
+                alt="QR Code Pix"
+                className="h-auto w-full"
+              />
+            </div>
+          )}
+          <div className="rounded-lg border border-pink-200/12 bg-black/34 p-3">
+            <p className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-ryuu-soft">Pix copia e cola</p>
+            <textarea
+              readOnly
+              value={pixPayment.qrCode}
+              className="h-24 w-full resize-none rounded-lg border border-pink-200/12 bg-black/40 p-3 text-xs text-pink-100 outline-none"
+            />
+            <button
+              type="button"
+              onClick={copyPix}
+              className="mt-3 w-full rounded-lg border border-ryuu-neon/35 bg-ryuu-neon/10 px-4 py-3 text-sm font-black text-ryuu-soft"
+            >
+              Copiar Pix
+            </button>
+          </div>
+          <p className="rounded-lg border border-amber-200/20 bg-amber-300/10 p-3 text-sm font-bold text-amber-100">
+            Após pagar, a aprovação é automática. O pedido muda para Aguardando Envio assim que o banco confirmar.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Checkout({
   cart,
   subtotal,
@@ -1901,10 +2011,13 @@ function Checkout({
   deliveryHours,
   discordUser,
   setDiscordUser,
+  pixPayment,
+  startPixPayment,
   checkoutSuccess,
   startMercadoPagoPayment,
   isProcessingPayment,
   setActiveView,
+  notify,
 }) {
   if (checkoutSuccess) {
     return (
@@ -1914,7 +2027,7 @@ function Checkout({
             <Check size={34} />
           </div>
           <h1 className="text-3xl font-black">Pedido criado</h1>
-          <p className="mt-4 leading-8 text-purple-100/76">
+          <p className="mt-4 leading-8 text-pink-100/76">
             Seu pedido foi salvo. Assim que o pagamento for confirmado, a equipe envia o acesso em até {deliveryHours}{' '}
             horas.
           </p>
@@ -1954,14 +2067,14 @@ function Checkout({
             ))}
           </div>
 
-          <label className="mt-6 grid gap-2 text-sm font-black text-purple-100">
+          <label className="mt-6 grid gap-2 text-sm font-black text-pink-100">
             Discord para entrega manual
             <input
               required
               value={discordUser}
               onChange={(event) => setDiscordUser(event.target.value)}
               placeholder="Seu Discord"
-              className="rounded-lg border border-purple-200/15 bg-black/40 px-4 py-3 font-normal outline-none transition focus:border-ryuu-neon"
+              className="rounded-lg border border-pink-200/15 bg-black/40 px-4 py-3 font-normal outline-none transition focus:border-ryuu-neon"
             />
           </label>
 
@@ -1973,7 +2086,7 @@ function Checkout({
 
         <div className="glass rounded-lg p-6">
           <h2 className="text-2xl font-black">Resumo</h2>
-          <div className="my-5 border-y border-purple-200/10 py-4">
+          <div className="my-5 border-y border-pink-200/10 py-4">
             <PriceRow label="Subtotal" value={subtotal} />
             <PriceRow label={activeCoupon ? `Cupom ${activeCoupon.code}` : 'Desconto'} value={discount} negative />
             <div className="mt-4 flex items-center justify-between text-2xl font-black">
@@ -1987,6 +2100,13 @@ function Checkout({
             </div>
           )}
           <h3 className="text-sm font-black uppercase tracking-[0.18em] text-ryuu-soft">Métodos de pagamento</h3>
+          <PixPaymentBox
+            pixPayment={pixPayment}
+            disabled={!discordUser.trim() || isProcessingPayment}
+            isProcessingPayment={isProcessingPayment}
+            startPixPayment={startPixPayment}
+            notify={notify}
+          />
           <MercadoPagoBrick
             publicKey={appConfig.mercadoPago.publicKey}
             amount={total}
@@ -2020,7 +2140,7 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
         <div className="glass rounded-lg p-8">
           <Lock className="mx-auto mb-4 text-ryuu-soft" size={42} />
           <h1 className="text-3xl font-black">Login obrigatório</h1>
-          <p className="mt-3 text-purple-100/70">Entre na sua conta para ver histórico de compras e dados do perfil.</p>
+          <p className="mt-3 text-pink-100/70">Entre na sua conta para ver histórico de compras e dados do perfil.</p>
           <button
             type="button"
             onClick={() => setIsAuthOpen(true)}
@@ -2038,7 +2158,7 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
       <div className="mb-8">
         <p className="text-sm font-black uppercase tracking-[0.22em] text-ryuu-soft">Minha conta</p>
         <h1 className="mt-2 text-4xl font-black">Minha conta</h1>
-        <p className="mt-3 max-w-2xl text-purple-100/68">
+        <p className="mt-3 max-w-2xl text-pink-100/68">
           Atualize seus dados, vincule seu Discord e acompanhe seus pedidos.
         </p>
       </div>
@@ -2060,7 +2180,7 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
             className={`rounded-full px-4 py-2 text-sm font-black transition ${
               accountTab === id
                 ? 'bg-ryuu-neon text-white shadow-glow-sm'
-                : 'border border-purple-200/12 bg-white/5 text-purple-100/72 hover:border-ryuu-neon'
+                : 'border border-pink-200/12 bg-white/5 text-pink-100/72 hover:border-ryuu-neon'
             }`}
           >
             {label}
@@ -2112,7 +2232,7 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
                 <button
                   type="button"
                   onClick={() => setActiveView('catalogo')}
-                  className="mt-5 rounded-lg border border-ryuu-neon/35 bg-white/5 px-4 py-3 font-black text-purple-50 transition hover:shadow-glow-sm"
+                  className="mt-5 rounded-lg border border-ryuu-neon/35 bg-white/5 px-4 py-3 font-black text-pink-50 transition hover:shadow-glow-sm"
                 >
                   Ver produtos
                 </button>
@@ -2125,16 +2245,16 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
               <h2 className="mb-4 text-2xl font-black">Entrega</h2>
               <div className="grid gap-3">
                 {orderStatus.length === 0 ? (
-                  <p className="rounded-lg border border-purple-200/12 bg-black/24 p-4 text-purple-100/66">
+                  <p className="rounded-lg border border-pink-200/12 bg-black/24 p-4 text-pink-100/66">
                     Nenhuma entrega pendente.
                   </p>
                 ) : (
                   orderStatus.map((order) => (
-                    <div key={order.id} className="rounded-lg border border-purple-200/12 bg-black/24 p-4">
+                    <div key={order.id} className="rounded-lg border border-pink-200/12 bg-black/24 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="font-black">{order.product}</p>
-                          <p className="text-sm text-purple-100/60">{order.id}</p>
+                          <p className="text-sm text-pink-100/60">{order.id}</p>
                         </div>
                         <span className="rounded-full border border-ryuu-neon/25 bg-ryuu-neon/10 px-3 py-1 text-xs font-black text-ryuu-soft">
                           {order.status}
@@ -2150,7 +2270,7 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
           {accountTab === 'suporte' && (
             <>
               <h2 className="mb-4 text-2xl font-black">Suporte</h2>
-              <p className="leading-7 text-purple-100/72">
+              <p className="leading-7 text-pink-100/72">
                 Precisa de ajuda com pagamento, entrega ou acesso? Chama a equipe Ryuu no Discord.
               </p>
               <a
@@ -2172,8 +2292,8 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
 
 function AccountMiniStat({ label, value }) {
   return (
-    <div className="rounded-lg border border-purple-200/12 bg-black/24 p-4">
-      <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-100/48">{label}</p>
+    <div className="rounded-lg border border-pink-200/12 bg-black/24 p-4">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-pink-100/48">{label}</p>
       <p className="mt-2 truncate text-lg font-black">{value}</p>
     </div>
   );
@@ -2217,12 +2337,12 @@ function ProfileEditor({ profile, currentUser, userRole, saveProfile }) {
         placeholder="seu.discord"
         onChange={(event) => setDraft((current) => ({ ...current, discord: event.target.value }))}
       />
-      <label className="grid gap-1 text-sm font-bold text-purple-100">
+      <label className="grid gap-1 text-sm font-bold text-pink-100">
         Cargo
         <input
           value={roleLabels[userRole] || 'Usuário'}
           disabled
-          className="rounded-lg border border-purple-200/15 bg-black/28 px-4 py-3 font-normal text-purple-100/78 outline-none"
+          className="rounded-lg border border-pink-200/15 bg-black/28 px-4 py-3 font-normal text-pink-100/78 outline-none"
         />
       </label>
       <AuthInput
@@ -2291,7 +2411,7 @@ function AdminDashboard({
         <div className="glass rounded-lg p-8">
           <Lock className="mx-auto mb-4 text-ryuu-soft" size={42} />
           <h1 className="text-3xl font-black">Acesso administrativo bloqueado</h1>
-          <p className="mt-3 text-purple-100/70">
+          <p className="mt-3 text-pink-100/70">
             Esta área aparece somente para contas com cargo Administrador.
           </p>
         </div>
@@ -2419,11 +2539,11 @@ function AdminDashboard({
         <div>
           <p className="text-sm font-black uppercase tracking-[0.22em] text-ryuu-soft">Admin Dashboard</p>
           <h1 className="mt-2 text-4xl font-black">Painel administrativo</h1>
-          <p className="mt-3 max-w-2xl text-purple-100/62">
+          <p className="mt-3 max-w-2xl text-pink-100/62">
             Controle pedidos, produtos, usuários e cupons em um só lugar.
           </p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-ryuu-neon/25 bg-ryuu-deep/40 px-4 py-2 text-sm font-bold text-purple-100">
+        <div className="inline-flex items-center gap-2 rounded-full border border-ryuu-neon/25 bg-ryuu-deep/40 px-4 py-2 text-sm font-bold text-pink-100">
           <ShieldCheck size={17} /> Rota protegida por role admin
         </div>
       </div>
@@ -2439,7 +2559,7 @@ function AdminDashboard({
           <a
             key={href}
             href={href}
-            className="rounded-full border border-purple-200/12 bg-white/5 px-4 py-2 text-sm font-black text-purple-100/80 transition hover:border-ryuu-neon hover:text-white"
+            className="rounded-full border border-pink-200/12 bg-white/5 px-4 py-2 text-sm font-black text-pink-100/80 transition hover:border-ryuu-neon hover:text-white"
           >
             {label}
           </a>
@@ -2460,15 +2580,15 @@ function AdminDashboard({
               <AreaChart data={weeklySalesDate}>
                 <defs>
                   <linearGradient id="vendas" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="5%" stopColor="#9B30FF" stopOpacity={0.75} />
-                    <stop offset="95%" stopColor="#9B30FF" stopOpacity={0.05} />
+                    <stop offset="5%" stopColor="#FF2D8D" stopOpacity={0.75} />
+                    <stop offset="95%" stopColor="#FF2D8D" stopOpacity={0.05} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="rgba(216,180,254,.12)" />
-                <XAxis dataKey="label" stroke="#D8B4FE" />
-                <YAxis stroke="#D8B4FE" />
-                <Tooltip contentStyle={{ background: '#1A001A', border: '1px solid #6A0DAD', borderRadius: 8 }} />
-                <Area type="monotone" dataKey="vendas" stroke="#9B30FF" fill="url(#vendas)" strokeWidth={3} />
+                <XAxis dataKey="label" stroke="#FFB3D6" />
+                <YAxis stroke="#FFB3D6" />
+                <Tooltip contentStyle={{ background: '#240011', border: '1px solid #C2185B', borderRadius: 8 }} />
+                <Area type="monotone" dataKey="vendas" stroke="#FF2D8D" fill="url(#vendas)" strokeWidth={3} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -2480,10 +2600,10 @@ function AdminDashboard({
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={products}>
                 <CartesianGrid stroke="rgba(216,180,254,.12)" />
-                <XAxis dataKey="name" stroke="#D8B4FE" tick={{ fontSize: 11 }} />
-                <YAxis stroke="#D8B4FE" />
-                <Tooltip contentStyle={{ background: '#1A001A', border: '1px solid #6A0DAD', borderRadius: 8 }} />
-                <Bar dataKey="sales" fill="#9B30FF" radius={[8, 8, 0, 0]} />
+                <XAxis dataKey="name" stroke="#FFB3D6" tick={{ fontSize: 11 }} />
+                <YAxis stroke="#FFB3D6" />
+                <Tooltip contentStyle={{ background: '#240011', border: '1px solid #C2185B', borderRadius: 8 }} />
+                <Bar dataKey="sales" fill="#FF2D8D" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -2495,7 +2615,7 @@ function AdminDashboard({
           <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <h2 className="text-2xl font-black">Gerenciamento de pedidos</h2>
             <div className="flex gap-2">
-              <div className="flex items-center gap-2 rounded-lg border border-purple-200/15 bg-white/6 px-3 py-2">
+              <div className="flex items-center gap-2 rounded-lg border border-pink-200/15 bg-white/6 px-3 py-2">
                 <Filter size={18} />
                 <select
                   value={orderFilter}
@@ -2508,7 +2628,7 @@ function AdminDashboard({
                   <option value="Acesso Enviado">Acesso Enviado</option>
                 </select>
               </div>
-              <button type="button" className="rounded-lg border border-purple-200/15 bg-white/6 p-2" title="Buscar">
+              <button type="button" className="rounded-lg border border-pink-200/15 bg-white/6 p-2" title="Buscar">
                 <Search size={18} />
               </button>
             </div>
@@ -2516,10 +2636,10 @@ function AdminDashboard({
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="text-purple-100/62">
+              <thead className="text-pink-100/62">
                 <tr>
                   {['Pedido', 'Cliente', 'Produto', 'Status', 'Discord', 'Ações'].map((header) => (
-                    <th key={header} className="border-b border-purple-200/10 px-3 py-3 font-black">
+                    <th key={header} className="border-b border-pink-200/10 px-3 py-3 font-black">
                       {header}
                     </th>
                   ))}
@@ -2528,13 +2648,13 @@ function AdminDashboard({
               <tbody>
                 {filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-3 py-8 text-center text-purple-100/58">
+                    <td colSpan="6" className="px-3 py-8 text-center text-pink-100/58">
                       Nenhum pedido ainda.
                     </td>
                   </tr>
                 ) : (
                   filteredOrders.map((order) => (
-                    <tr key={order.id} className="border-b border-purple-200/8">
+                    <tr key={order.id} className="border-b border-pink-200/8">
                       <td className="px-3 py-4 font-black">{order.id}</td>
                       <td className="px-3 py-4">{order.client}</td>
                       <td className="px-3 py-4">{order.product}</td>
@@ -2570,14 +2690,14 @@ function AdminDashboard({
         <div className="space-y-6">
           <div className="glass rounded-lg p-6">
             <h2 className="mb-4 text-2xl font-black">Configurações</h2>
-            <label className="grid gap-2 text-sm font-black text-purple-100">
+            <label className="grid gap-2 text-sm font-black text-pink-100">
               Tempo de entrega exibido no checkout
               <input
                 type="number"
                 min="1"
                 value={deliveryHours}
                 onChange={(event) => setDeliveryHours(Number(event.target.value))}
-                className="rounded-lg border border-purple-200/15 bg-black/40 px-4 py-3 font-normal outline-none focus:border-ryuu-neon"
+                className="rounded-lg border border-pink-200/15 bg-black/40 px-4 py-3 font-normal outline-none focus:border-ryuu-neon"
               />
             </label>
           </div>
@@ -2588,7 +2708,7 @@ function AdminDashboard({
         <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <h2 className="text-2xl font-black">Produtos</h2>
-            <p className="mt-1 text-sm text-purple-100/58">Edite preço, estoque, imagens e descrições com mais espaço.</p>
+            <p className="mt-1 text-sm text-pink-100/58">Edite preço, estoque, imagens e descrições com mais espaço.</p>
           </div>
           <button
             type="button"
@@ -2617,10 +2737,10 @@ function AdminDashboard({
         <AdminPanel title="Gerenciamento de usuários" icon={Users} id="admin-usuarios">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[680px] text-left text-sm">
-              <thead className="text-purple-100/62">
+              <thead className="text-pink-100/62">
                 <tr>
                   {['Nome', 'Gmail', 'Discord', 'Cargo', 'Compras'].map((header) => (
-                    <th key={header} className="border-b border-purple-200/10 px-3 py-3 font-black">
+                    <th key={header} className="border-b border-pink-200/10 px-3 py-3 font-black">
                       {header}
                     </th>
                   ))}
@@ -2629,13 +2749,13 @@ function AdminDashboard({
               <tbody>
                 {adminUsers.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-3 py-8 text-center text-purple-100/58">
+                    <td colSpan="5" className="px-3 py-8 text-center text-pink-100/58">
                       Nenhum usuário ainda.
                     </td>
                   </tr>
                 ) : (
                   adminUsers.map((user) => (
-                    <tr key={user.id || user.email} className="border-b border-purple-200/8">
+                    <tr key={user.id || user.email} className="border-b border-pink-200/8">
                       <td className="px-3 py-4 font-black">{user.name}</td>
                       <td className="px-3 py-4">{user.email}</td>
                       <td className="px-3 py-4">{user.discord}</td>
@@ -2643,7 +2763,7 @@ function AdminDashboard({
                         <select
                           value={user.role || 'usuario'}
                           onChange={(event) => updateUserRole(user.id, event.target.value)}
-                          className="rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 text-sm font-bold outline-none focus:border-ryuu-neon"
+                          className="rounded-lg border border-pink-200/15 bg-black/40 px-3 py-2 text-sm font-bold outline-none focus:border-ryuu-neon"
                         >
                           <option value="usuario">Usuário</option>
                           <option value="cliente">Cliente</option>
@@ -2665,12 +2785,12 @@ function AdminDashboard({
               value={couponDraft.code}
               onChange={(event) => setCouponDraft((current) => ({ ...current, code: event.target.value }))}
               placeholder="Código"
-              className="rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 text-sm outline-none focus:border-ryuu-neon"
+              className="rounded-lg border border-pink-200/15 bg-black/40 px-3 py-2 text-sm outline-none focus:border-ryuu-neon"
             />
             <select
               value={couponDraft.type}
               onChange={(event) => setCouponDraft((current) => ({ ...current, type: event.target.value }))}
-              className="rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 text-sm outline-none focus:border-ryuu-neon"
+              className="rounded-lg border border-pink-200/15 bg-black/40 px-3 py-2 text-sm outline-none focus:border-ryuu-neon"
             >
               <option value="Percentual">Percentual</option>
               <option value="Valor fixo">Valor fixo</option>
@@ -2679,7 +2799,7 @@ function AdminDashboard({
               value={couponDraft.value}
               onChange={(event) => setCouponDraft((current) => ({ ...current, value: event.target.value }))}
               placeholder="Ex: 10% ou R$ 20"
-              className="rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 text-sm outline-none focus:border-ryuu-neon"
+              className="rounded-lg border border-pink-200/15 bg-black/40 px-3 py-2 text-sm outline-none focus:border-ryuu-neon"
             />
             <button
               type="button"
@@ -2691,10 +2811,10 @@ function AdminDashboard({
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-left text-sm">
-              <thead className="text-purple-100/62">
+              <thead className="text-pink-100/62">
                 <tr>
                   {['Código', 'Tipo', 'Valor', 'Limite', 'Status', 'Ações'].map((header) => (
-                    <th key={header} className="border-b border-purple-200/10 px-3 py-3 font-black">
+                    <th key={header} className="border-b border-pink-200/10 px-3 py-3 font-black">
                       {header}
                     </th>
                   ))}
@@ -2702,7 +2822,7 @@ function AdminDashboard({
               </thead>
               <tbody>
                 {adminCoupons.map((coupon) => (
-                  <tr key={coupon.code} className="border-b border-purple-200/8">
+                  <tr key={coupon.code} className="border-b border-pink-200/8">
                     <td className="px-3 py-4 font-black">{coupon.code}</td>
                     <td className="px-3 py-4">{coupon.type}</td>
                     <td className="px-3 py-4">{coupon.value}</td>
@@ -2713,7 +2833,7 @@ function AdminDashboard({
                         <button
                           type="button"
                           onClick={() => toggleCoupon(coupon.code)}
-                          className="rounded-lg bg-white/6 px-3 py-2 text-xs font-black text-purple-100 hover:shadow-glow-sm"
+                          className="rounded-lg bg-white/6 px-3 py-2 text-xs font-black text-pink-100 hover:shadow-glow-sm"
                         >
                           {coupon.status === 'Ativo' ? 'Desativar' : 'Ativar'}
                         </button>
@@ -2745,9 +2865,9 @@ function AdminStat({ icon: Icon, label, value }) {
         <div className="grid h-11 w-11 place-items-center rounded-lg bg-ryuu-neon/18 text-ryuu-soft">
           <Icon size={21} />
         </div>
-        <BarChart3 className="text-purple-200/40" size={20} />
+        <BarChart3 className="text-pink-200/40" size={20} />
       </div>
-      <p className="text-sm text-purple-100/62">{label}</p>
+      <p className="text-sm text-pink-100/62">{label}</p>
       <p className="mt-1 text-3xl font-black">{value}</p>
     </div>
   );
@@ -2762,12 +2882,12 @@ function AdminProductEditor({
   handleProductImageUpload,
 }) {
   return (
-    <div className="rounded-lg border border-purple-200/12 bg-black/24 p-4">
+    <div className="rounded-lg border border-pink-200/12 bg-black/24 p-4">
       <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-ryuu-soft">Produto</p>
           <h3 className="mt-1 text-xl font-black">{product.name}</h3>
-          <p className="mt-1 text-xs text-purple-100/48">ID: {product.id}</p>
+          <p className="mt-1 text-xs text-pink-100/48">ID: {product.id}</p>
         </div>
         <span
           className={`w-fit rounded-full px-3 py-1 text-xs font-black ${
@@ -2879,7 +2999,7 @@ function AdminProductEditor({
             <button
               type="button"
               onClick={() => duplicateProduct(product)}
-              className="rounded-lg border border-purple-200/15 bg-white/5 px-3 py-3 text-xs font-black text-purple-100"
+              className="rounded-lg border border-pink-200/15 bg-white/5 px-3 py-3 text-xs font-black text-pink-100"
             >
               Duplicar
             </button>
@@ -2899,7 +3019,7 @@ function AdminProductEditor({
 
 function AdminField({ label, children }) {
   return (
-    <label className="grid gap-1 text-xs font-black uppercase tracking-[0.12em] text-purple-100/58">
+    <label className="grid gap-1 text-xs font-black uppercase tracking-[0.12em] text-pink-100/58">
       {label}
       {children}
     </label>
@@ -2924,10 +3044,10 @@ function DateTable({ headers, rows }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[560px] text-left text-sm">
-        <thead className="text-purple-100/62">
+        <thead className="text-pink-100/62">
           <tr>
             {headers.map((header) => (
-              <th key={header} className="border-b border-purple-200/10 px-3 py-3 font-black">
+              <th key={header} className="border-b border-pink-200/10 px-3 py-3 font-black">
                 {header}
               </th>
             ))}
@@ -2936,13 +3056,13 @@ function DateTable({ headers, rows }) {
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={headers.length} className="px-3 py-8 text-center text-purple-100/58">
+              <td colSpan={headers.length} className="px-3 py-8 text-center text-pink-100/58">
                 Nada por aqui ainda.
               </td>
             </tr>
           ) : (
             rows.map((row) => (
-              <tr key={row.join('-')} className="border-b border-purple-200/8">
+              <tr key={row.join('-')} className="border-b border-pink-200/8">
                 {row.map((cell) => (
                   <td key={cell} className="px-3 py-4">
                     {cell}
@@ -2959,26 +3079,26 @@ function DateTable({ headers, rows }) {
 
 function Footer() {
   return (
-    <footer className="border-t border-purple-200/10 bg-black/30">
+    <footer className="border-t border-pink-200/10 bg-black/30">
       <div className="mx-auto flex max-w-7xl flex-col justify-between gap-5 px-4 py-8 sm:px-6 md:flex-row md:items-center lg:px-8">
         <div className="flex items-center gap-3">
           <img
             src={iconGif}
-            alt="ÍCONE GIF Ryuu Group"
+            alt="ÍCONE GIF Ryuu Cheats"
             loading="lazy"
             decoding="async"
             className="h-11 w-11 rounded-lg object-cover"
           />
           <div>
-            <p className="font-black">Ryuu Group</p>
-            <p className="text-sm text-purple-100/62">Acesso vitalício.</p>
+            <p className="font-black">Ryuu Cheats</p>
+            <p className="text-sm text-pink-100/62">Acesso vitalício.</p>
           </div>
         </div>
         <a
           href="https://discord.gg/SKQXhFHtEp"
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-ryuu-neon/30 px-4 py-3 font-black text-purple-100 hover:shadow-glow-sm"
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-ryuu-neon/30 px-4 py-3 font-black text-pink-100 hover:shadow-glow-sm"
         >
           <img src={discordIcon} alt="" className="h-5 w-5 object-contain" />
           Entrar no Discord

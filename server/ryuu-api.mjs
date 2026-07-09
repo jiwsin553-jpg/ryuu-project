@@ -22,6 +22,7 @@ if (fs.existsSync(envPath)) {
 
 const port = Number(process.env.PORT || 3001);
 const mercadoPagoAccessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN || '';
+const mercadoPagoWebhookUrl = process.env.MERCADO_PAGO_WEBHOOK_URL || '';
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const allowedOrigins = (process.env.CORS_ORIGIN || 'https://ryuucheatsbr.dev')
@@ -120,11 +121,12 @@ const handlePayment = async (request, response) => {
   const mpPayload = {
     transaction_amount: Number(body.total || payment.transaction_amount || 0),
     token: payment.token,
-    description: `Ryuu Group - pedido ${body.orderId}`,
+    description: `Ryuu Cheats - pedido ${body.orderId}`,
     installments: Number(payment.installments || 1),
     payment_method_id: payment.payment_method_id,
     issuer_id: payment.issuer_id,
     external_reference: body.orderId,
+    notification_url: mercadoPagoWebhookUrl || undefined,
     payer: {
       email: payment.payer?.email || body.customer?.email,
       identification: payment.payer?.identification,
@@ -151,9 +153,9 @@ const handlePayment = async (request, response) => {
   });
 };
 
-const handleWebhook = async (request, response) => {
+const handleWebhook = async (request, response, url) => {
   const body = await readJson(request);
-  const paymentId = body?.data?.id || body?.id;
+  const paymentId = body?.data?.id || body?.id || url.searchParams.get('data.id') || url.searchParams.get('id');
 
   if (!paymentId) {
     sendJson(request, response, 200, { received: true });
@@ -186,7 +188,7 @@ const server = http.createServer(async (request, response) => {
     }
 
     if (request.method === 'POST' && url.pathname === '/api/mercadopago/webhook') {
-      await handleWebhook(request, response);
+      await handleWebhook(request, response, url);
       return;
     }
 

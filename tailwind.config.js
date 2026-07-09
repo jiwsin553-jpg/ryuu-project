@@ -6,16 +6,16 @@ export default {
       colors: {
         ryuu: {
           black: '#0D0D0D',
-          ink: '#1A001A',
-          deep: '#2D0057',
-          violet: '#6A0DAD',
-          neon: '#9B30FF',
-          soft: '#D8B4FE',
+          ink: '#240011',
+          deep: '#4A0024',
+          violet: '#C2185B',
+          neon: '#FF2D8D',
+          soft: '#FFB3D6',
         },
       },
       boxShadow: {
-        glow: '0 0 32px rgba(155, 48, 255, 0.38)',
-        'glow-sm': '0 0 18px rgba(155, 48, 255, 0.25)',
+        glow: '0 0 32px rgba(255, 45, 141, 0.38)',
+        'glow-sm': '0 0 18px rgba(255, 45, 141, 0.25)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'Segoe UI', 'sans-serif'],
