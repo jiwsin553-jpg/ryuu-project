@@ -514,7 +514,7 @@ function App() {
         quantity: item.quantity,
         price: item.price,
       })),
-      coupon_code: activeCoupon.code || null,
+      coupon_code: activeCoupon?.code || null,
       subtotal,
       discount,
       total,
