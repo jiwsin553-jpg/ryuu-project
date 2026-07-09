@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -785,7 +785,7 @@ function App() {
       const message = String(error.message || '');
       notify(
         message.includes('orders_status_check')
-          ? 'Banco ainda nÃ£o aceita pedido cancelado. Rode o SQL de correÃ§Ã£o.'
+          ? 'Banco ainda não aceita pedido cancelado. Rode o SQL de correção.'
           : message || 'Erro ao cancelar pagamento.',
         'error',
       );
@@ -893,8 +893,8 @@ function App() {
     notify(
       response.data.session
         ? authTab === 'login'
-          ? 'Login bem-sucedido. Bem-vindo Ã  Ryuu.'
-          : 'Conta criada. Bem-vindo Ã  Ryuu.'
+          ? 'Login bem-sucedido. Bem-vindo à Ryuu.'
+          : 'Conta criada. Bem-vindo à Ryuu.'
         : 'Confira seu Gmail para confirmar a conta.',
     );
   };
@@ -950,7 +950,7 @@ function App() {
     setOrderStatus((current) =>
       current.map((order) =>
         order.id === orderId
-          ? { ...order, status: 'Acesso Enviado', data: new Date().toLocaleString('pt-BR') }
+          ? { ...order, status: 'Acesso Enviado', date: new Date().toLocaleString('pt-BR') }
           : order,
       ),
     );
@@ -1265,7 +1265,7 @@ function Navbar({
   mobileMenuOpen,
   setMobileMenuOpen,
 }) {
-  const userName = profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'UsuÃ¡rio';
+  const userName = profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Usuário';
   const userButtonLabel = isLoggedIn ? userName : 'Entrar';
 
   const navigate = (id) => {
@@ -1652,7 +1652,7 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
                   onClick={() => setActiveTab(tab.id)}
                     className={`rounded-full px-4 py-2 text-sm font-black transition ${
                       activeTab === tab.id
-                        ? 'bg-ryuu-neon text-white shadow-glow-sm'
+                         'bg-ryuu-neon text-white shadow-glow-sm'
                         : 'border border-pink-200/12 bg-white/5 text-pink-100/72 hover:border-ryuu-neon'
                     }`}
                 >
@@ -1816,7 +1816,7 @@ function StatusBadge({ available }) {
     <span
         className={`inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1 text-xs font-black ${
           available
-            ? 'bg-emerald-400/12 text-emerald-300 ring-1 ring-emerald-300/30'
+             'bg-emerald-400/12 text-emerald-300 ring-1 ring-emerald-300/30'
             : 'bg-red-400/10 text-red-200 ring-1 ring-red-300/20'
         }`}
     >
@@ -2426,7 +2426,7 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
             }}
             className={`rounded-full px-4 py-2 text-sm font-black transition ${
               accountTab === id
-                ? 'bg-ryuu-neon text-white shadow-glow-sm'
+                 'bg-ryuu-neon text-white shadow-glow-sm'
                 : 'border border-pink-200/12 bg-white/5 text-pink-100/72 hover:border-ryuu-neon'
             }`}
           >
@@ -2436,7 +2436,7 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[0.72fr_1fr]">
-        <div className={`glass rounded-lg p-6 ${accountTab !== 'perfil' ? 'hidden lg:block' : ''}`}>
+        <div className={`glass rounded-lg p-6 ${accountTab !== 'perfil'  'hidden lg:block' : ''}`}>
           <h2 className="mb-4 text-2xl font-black">Perfil</h2>
           <ProfileEditor profile={profile} currentUser={currentUser} userRole={userRole} saveProfile={saveProfile} />
           <a
@@ -2472,7 +2472,7 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
                   order.product,
                   formatCurrency(order.value),
                   order.status,
-                  order.discord || profile?.discord || 'Não informado',
+                  order.discord || profile?.discord || 'NÃ£o informado',
                   order.date || 'Sem data',
                 ])}
               />
@@ -2519,7 +2519,7 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
             <>
               <h2 className="mb-4 text-2xl font-black">Suporte</h2>
               <p className="leading-7 text-pink-100/72">
-                Precisa de ajuda com pagamento, entrega ou acesso? Chama a equipe Ryuu no Discord.
+                Precisa de ajuda com pagamento, entrega ou acesso Chama a equipe Ryuu no Discord.
               </p>
               <a
                 href="https://discord.gg/SKQXhFHtEp"
@@ -3144,7 +3144,7 @@ function AdminProductEditor({
         <span
           className={`w-fit rounded-full px-3 py-1 text-xs font-black ${
             product.available
-              ? 'border border-emerald-300/25 bg-emerald-400/10 text-emerald-200'
+               'border border-emerald-300/25 bg-emerald-400/10 text-emerald-200'
               : 'border border-red-300/20 bg-red-400/10 text-red-100'
           }`}
         >

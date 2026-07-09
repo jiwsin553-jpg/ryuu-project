@@ -50,7 +50,7 @@ const readJson = async (request) => {
   const chunks = [];
   for await (const chunk of request) chunks.push(chunk);
   const body = Buffer.concat(chunks).toString('utf8');
-  return body ? JSON.parse(body) : {};
+  return body  JSON.parse(body) : {};
 };
 
 const postMercadoPago = async (path, payload) => {
@@ -204,7 +204,7 @@ const handleCancelPayment = async (request, response) => {
   }
 
   const cancelledPayment =
-    payment.status === 'cancelled' ? payment : await putMercadoPago(`/v1/payments/${paymentId}`, { status: 'cancelled' });
+    payment.status === 'cancelled'  payment : await putMercadoPago(`/v1/payments/${paymentId}`, { status: 'cancelled' });
 
   await updateOrderStatus(orderId, 'Cancelado', cancelledPayment.id);
 
