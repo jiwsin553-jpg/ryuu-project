@@ -1265,7 +1265,7 @@ function Navbar({
   mobileMenuOpen,
   setMobileMenuOpen,
 }) {
-  const userName = profile?.name || currentUserá.user_metadata?.name || currentUserá.email?.split('@')[0] || 'Usuário';
+  const userName = profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Usuário';
   const userButtonLabel = isLoggedIn ? userName : 'Entrar';
 
   const navigate = (id) => {
@@ -1761,10 +1761,10 @@ function HomeSalesSections({ deliveryHours, setActiveView }) {
   const faqs = [
     {
       q: 'O acesso ? mensal',
-      a: 'Não. O acesso ? vitalício.',
+      a: 'Não. O acesso é vitalício.',
     },
     {
-      q: 'Quais sistemas são compatéveis',
+      q: 'Quais sistemas são compatíveis',
       a: 'O Ryuu External informa compatibilidade com Windows 10 e Windows 11.',
     },
     {
@@ -2234,7 +2234,7 @@ function PixPaymentBox({ pixPayment, pixTimeLeft, disabled, isProcessingPayment,
             </button>
           </div>
           <p className="rounded-lg border border-amber-200/20 bg-amber-300/10 p-3 text-sm font-bold text-amber-100">
-            Após pagar, a aprova??o ? autom?tica. O pedido muda para *Aguardando Envio* assim que o banco confirmar.
+            Após pagar, a aprovação é automática. O pedido muda para *Aguardando Envio* assim que o banco confirmar.
           </p>
         </div>
       )}
@@ -2549,16 +2549,16 @@ function AccountMiniStat({ label, value }) {
 
 function ProfileEditor({ profile, currentUser, userRole, saveProfile }) {
   const [draft, setDraft] = useState({
-    name: profile?.name || currentUserá.user_metadata?.name || currentUserá.email?.split('@')[0] || 'Cliente Ryuu',
-    email: profile?.email || currentUserá.email || '',
+    name: profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Cliente Ryuu',
+    email: profile?.email || currentUser?.email || '',
     discord: profile?.discord || '',
     password: '',
   });
 
   useEffect(() => {
     setDraft({
-      name: profile?.name || currentUserá.user_metadata?.name || currentUserá.email?.split('@')[0] || 'Cliente Ryuu',
-      email: profile?.email || currentUserá.email || '',
+      name: profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Cliente Ryuu',
+      email: profile?.email || currentUser?.email || '',
       discord: profile?.discord || '',
       password: '',
     });
@@ -2636,7 +2636,7 @@ function AdminDashboard({
 }) {
   const [orderFilter, setOrderFilter] = useState('Todos');
   const [couponDraft, setCouponDraft] = useState({ code: '', value: '', type: 'Percentual' });
-  const adminName = profile?.name || currentUserá.user_metadata?.name || currentUserá.email?.split('@')[0] || 'Admin';
+  const adminName = profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Admin';
   const revenue = adminOrders.reduce((total, order) => total + order.value, 0);
   const sentCount = adminOrders.filter((order) => order.status === 'Acesso Enviado').length;
   const filteredOrders =

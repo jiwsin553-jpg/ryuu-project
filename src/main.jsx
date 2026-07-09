@@ -31,7 +31,7 @@ class ErrorBoundary extends React.Component {
             <p className="text-sm font-bold uppercase tracking-[0.3em] text-pink-200">Ryuu Cheats</p>
             <h1 className="mt-3 text-3xl font-black">A loja travou ao carregar</h1>
             <p className="mt-3 text-sm text-white/70">
-              Isso costuma acontecer quando o navegador guardou um carrinho ou pagamento antigo quebrado.
+              Parece que houve um erro ao carregar a loja. Tente recarregar a página ou clique no botão abaixo para redefinir o armazenamento local e reiniciar a loja.
             </p>
             <button
               type="button"
