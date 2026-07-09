@@ -58,7 +58,7 @@ const initialProducts = [
   {
     id: 'ryuu-externo',
     name: 'Ryuu External',
-    shortDescription: 'Painel externo para Blood Strike com acesso vitalÃ­cio.',
+    shortDescription: 'Painel externo para Blood Strike com acesso vitalício.',
     description:
       'Smoke External\n\nAIMBOT:\n- Aimbot Enabled\n- Draw FOV\n- Randomize Aim\n- FOV\n- Smooth\n\nESP:\n- ESP Enabled\n- Box ESP\n- Cornered Box\n- Filled Box\n- Bones ESP\n- Snapline\n\nOVERLAYS:\n- Show Hotkey\n- Watermark\n- Stream Bypass\n\nCOMPATIBILIDADE:\n- Windows 10/11.',
     features: [
@@ -76,9 +76,9 @@ const initialProducts = [
   {
     id: 'ryuu-changer',
     name: 'Ryuu Changer',
-    shortDescription: 'Ferramenta de personalizaÃ§Ã£o avanÃ§ada. DescriÃ§Ã£o editÃ¡vel pelo administrador.',
-    description: 'Ferramenta de personalizaÃ§Ã£o avanÃ§ada. DescriÃ§Ã£o editÃ¡vel pelo administrador.',
-    features: [{ title: 'STATUS', items: ['Produto em preparaÃ§Ã£o', 'Sem vendas liberadas no momento'] }],
+    shortDescription: 'Ferramenta de personalização avançada. Descrição editável pelo administrador.',
+    description: 'Ferramenta de personalização avançada. Descrição editável pelo administrador.',
+    features: [{ title: 'STATUS', items: ['Produto em preparação', 'Sem vendas liberadas no momento'] }],
     price: 79,
     available: false,
     image: 'Em breve',
@@ -87,9 +87,9 @@ const initialProducts = [
   {
     id: 'ryuu-extremer',
     name: 'Ryuu Extremer',
-    shortDescription: 'VersÃ£o extrema em preparaÃ§Ã£o, com recursos avanÃ§ados e entrega manual.',
-    description: 'VersÃ£o extrema em preparaÃ§Ã£o, com recursos avanÃ§ados e entrega manual.',
-    features: [{ title: 'STATUS', items: ['Produto em preparaÃ§Ã£o', 'Sem vendas liberadas no momento'] }],
+    shortDescription: 'Versão extrema em preparação, com recursos avançados e entrega manual.',
+    description: 'Versão extrema em preparação, com recursos avançados e entrega manual.',
+    features: [{ title: 'STATUS', items: ['Produto em preparação', 'Sem vendas liberadas no momento'] }],
     price: 147,
     available: false,
     image: 'Em breve',
@@ -114,7 +114,7 @@ const salesDate = [
   { label: 'Qua', vendas: 610, pedidos: 6 },
   { label: 'Qui', vendas: 980, pedidos: 11 },
   { label: 'Sex', vendas: 1320, pedidos: 14 },
-  { label: 'SÃ¡b', vendas: 1180, pedidos: 12 },
+  { label: 'Sáb', vendas: 1180, pedidos: 12 },
   { label: 'Dom', vendas: 860, pedidos: 9 },
 ];
 
@@ -123,7 +123,7 @@ const orders = [];
 const users = [];
 
 const roleLabels = {
-  usuario: 'UsuÃ¡rio',
+  usuario: 'Usuário',
   cliente: 'Cliente',
   administrador: 'Administrador',
 };
@@ -175,7 +175,7 @@ const getSavedCart = () => {
     try {
       localStorage.removeItem(cartStorageKey);
     } catch {
-      // Navegador sem acesso ao localStorage: comeÃ§a com carrinho vazio.
+      // Navegador sem acesso ao localStorage: começa com carrinho vazio.
     }
     return [];
   }
@@ -307,7 +307,7 @@ function App() {
             ...product,
             productId: product.id,
             displayName: product.name,
-            accessLabel: item.accessLabel || 'VitalÃ­cio',
+            accessLabel: item.accessLabel || 'Vitalício',
             quantity: nextQuantity,
           };
 
@@ -518,7 +518,7 @@ function App() {
 
   const addToCart = (product) => {
     if (!product.available) {
-      notify('Este produto estÃ¡ indisponÃ­vel no momento.', 'error');
+      notify('Este produto está indisponível no momento.', 'error');
       return;
     }
 
@@ -531,12 +531,12 @@ function App() {
       ...product,
       productId: product.id,
       displayName: product.name,
-      accessLabel: 'VitalÃ­cio',
+      accessLabel: 'Vitalício',
     };
 
     const existingItem = cart.find((item) => item.id === cartItem.id);
     if (existingItem && existingItem.quantity >= product.stock) {
-      notify('Estoque mÃ¡ximo no carrinho.', 'warning');
+      notify('Estoque máximo no carrinho.', 'warning');
       return;
     }
 
@@ -568,7 +568,7 @@ function App() {
 
     const currentItem = cart.find((item) => item.id === productId);
     if (currentItem.stock && nextQuantity > currentItem.stock) {
-      notify('Estoque mÃ¡ximo no carrinho.', 'warning');
+      notify('Estoque máximo no carrinho.', 'warning');
       return;
     }
 
@@ -585,7 +585,7 @@ function App() {
 
     if (!isLoggedIn) {
       setIsAuthOpen(true);
-      notify('FaÃ§a login para continuar para o checkout.', 'warning');
+      notify('Faça login para continuar para o checkout.', 'warning');
       return;
     }
 
@@ -602,7 +602,7 @@ function App() {
     }
 
     if (!isSupabaseConfigured || !currentUser) {
-      notify('Supabase obrigatÃ³rio para criar pedido.', 'error');
+      notify('Supabase obrigatório para criar pedido.', 'error');
       return null;
     }
 
@@ -665,7 +665,7 @@ function App() {
     }
 
     if (!integrations.mercadoPago) {
-      notify('Pagamento nÃ£o configurado.', 'error');
+      notify('Pagamento não configurado.', 'error');
       return;
     }
 
@@ -674,7 +674,7 @@ function App() {
 
     try {
       const order = await createOrder('Pix');
-      if (!order) throw new Error('Pedido nÃ£o foi criado.');
+      if (!order) throw new Error('Pedido não foi criado.');
 
       const payload = buildCheckoutPayload(order);
       await Promise.allSettled([notifyDiscordOrder(payload), notifyEmailOrder(payload)]);
@@ -703,7 +703,7 @@ function App() {
         expiresAt: Date.now() + pixPaymentTtlMs,
       });
 
-      notify('Pix gerado. Pague em atÃ© 5 minutos.', 'warning');
+      notify('Pix gerado. Pague em até 5 minutos.', 'warning');
     } catch (error) {
       notify(error.message || 'Erro ao gerar Pix.', 'error');
     } finally {
@@ -719,15 +719,15 @@ function App() {
 
   const startMercadoPagoPayment = async (paymentDate) => {
     if (!integrations.mercadoPago) {
-      notify('Mercado Pago nÃ£o estÃ¡ configurado.', 'error');
-      throw new Error('Mercado Pago nÃ£o configurado.');
+      notify('Mercado Pago não está configurado.', 'error');
+      throw new Error('Mercado Pago não configurado.');
     }
 
     setIsProcessingPayment(true);
 
     try {
       const order = await createOrder('Mercado Pago');
-      if (!order) throw new Error('Pedido nÃ£o foi criado.');
+      if (!order) throw new Error('Pedido não foi criado.');
 
       const payload = buildCheckoutPayload(order);
       await Promise.allSettled([notifyDiscordOrder(payload), notifyEmailOrder(payload)]);
@@ -754,7 +754,7 @@ function App() {
         return result;
       }
 
-      throw new Error(statusDetail || 'Pagamento nÃ£o aprovado.');
+      throw new Error(statusDetail || 'Pagamento não aprovado.');
     } catch (error) {
       notify(error.message || 'Erro ao processar pagamento.', 'error');
       throw error;
@@ -862,7 +862,7 @@ function App() {
     const name = String(formDate.get('name') || '').trim();
 
     if (!isSupabaseConfigured) {
-      notify('Supabase nÃ£o configurado.', 'error');
+      notify('Supabase não configurado.', 'error');
       return;
     }
 
@@ -914,12 +914,12 @@ function App() {
     setUserRole('usuario');
     setUserMenuOpen(false);
     setActiveView('home');
-    notify('VocÃª saiu da Ryuu Cheats.');
+    notify('Você saiu da Ryuu Cheats.');
   };
 
   const handleDiscordAuth = async () => {
     if (!isSupabaseConfigured) {
-      notify('Supabase nÃ£o configurado.', 'error');
+      notify('Supabase não configurado.', 'error');
       return;
     }
 
@@ -1003,9 +1003,9 @@ function App() {
     const newProduct = {
       id: `produto-${Date.now()}`,
       name: 'Novo Produto',
-      shortDescription: 'DescriÃ§Ã£o curta editÃ¡vel pelo administrador.',
-      description: 'DescriÃ§Ã£o completa editÃ¡vel pelo administrador.',
-      features: [{ title: 'STATUS', items: ['Produto recÃ©m-criado'] }],
+      shortDescription: 'Descrição curta editável pelo administrador.',
+      description: 'Descrição completa editável pelo administrador.',
+      features: [{ title: 'STATUS', items: ['Produto recém-criado'] }],
       price: 99,
       stock: 0,
       available: false,
@@ -1029,7 +1029,7 @@ function App() {
     const newProduct = {
       ...product,
       id: `produto-${Date.now()}`,
-      name: `${product.name} cÃ³pia`,
+      name: `${product.name} cópia`,
       sales: 0,
       available: false,
     };
@@ -1102,8 +1102,8 @@ function App() {
 
   const navItems = useMemo(() => {
     return [
-      { label: 'InÃ­cio', id: 'home' },
-      { label: 'CatÃ¡logo', id: 'catalogo' },
+      { label: 'Início', id: 'home' },
+      { label: 'Catálogo', id: 'catalogo' },
     ];
   }, []);
 
@@ -1265,7 +1265,7 @@ function Navbar({
   mobileMenuOpen,
   setMobileMenuOpen,
 }) {
-  const userName = profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Usuário';
+  const userName = profile?.name || currentUserá.user_metadata?.name || currentUserá.email?.split('@')[0] || 'Usuário';
   const userButtonLabel = isLoggedIn ? userName : 'Entrar';
 
   const navigate = (id) => {
@@ -1295,7 +1295,7 @@ function Navbar({
         <button className="flex items-center gap-3" onClick={() => navigate('home')} type="button">
           <img
             src={iconGif}
-            alt="ÃCONE GIF Ryuu Cheats"
+            alt="ÍCONE GIF Ryuu Cheats"
             decoding="async"
             className="h-12 w-12 rounded-lg border border-ryuu-neon/40 object-cover shadow-glow-sm"
           />
@@ -1502,7 +1502,7 @@ function Hero({ setActiveView }) {
           Ryuu Cheats
         </div>
         <h1 className="max-w-4xl text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">
-          Paineis para Blood Strike com entrega rÃ¡pida e suporte direto da{' '}
+          Painéis para Blood Strike com entrega rápida e suporte direto da{' '}
           <span className="bg-gradient-to-r from-ryuu-soft to-ryuu-neon bg-clip-text text-transparent">Ryuu Cheats</span>
         </h1>
       </div>
@@ -1515,8 +1515,8 @@ function ProductCatalog({ products, addToCart, setSelectedProduct, standalone = 
     <section id="catalogo" className={`mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 ${standalone ? 'py-12' : 'py-10'}`}>
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="text-sm font-black uppercase tracking-[0.24em] text-ryuu-soft">CatÃ¡logo</p>
-          <h2 className="mt-2 text-3xl font-black sm:text-4xl">Paineis Ryuu Cheats</h2>
+          <p className="text-sm font-black uppercase tracking-[0.24em] text-ryuu-soft">Catálogo</p>
+          <h2 className="mt-2 text-3xl font-black sm:text-4xl">Painéis Ryuu Cheats</h2>
         </div>
       </div>
 
@@ -1549,7 +1549,7 @@ function ProductCatalog({ products, addToCart, setSelectedProduct, standalone = 
               ))}
             </div>
             <div className="my-5 rounded-lg border border-ryuu-neon/18 bg-ryuu-neon/10 p-4">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-ryuu-soft">Acesso vitalÃ­cio</p>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-ryuu-soft">Acesso vitalício</p>
               <p className="mt-1 text-3xl font-black">{formatCurrency(product.price)}</p>
               {product.available && <p className="mt-2 text-sm text-pink-100/70">Estoque: {product.stock}</p>}
             </div>
@@ -1569,7 +1569,7 @@ function ProductCatalog({ products, addToCart, setSelectedProduct, standalone = 
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-ryuu-violet to-ryuu-neon px-4 py-3 font-black text-white shadow-glow-sm transition enabled:hover:scale-[1.02] disabled:cursor-not-allowed disabled:from-zinc-700 disabled:to-zinc-600 disabled:text-zinc-300 disabled:shadow-none"
               >
                 <ShoppingCart size={18} />
-                {product.available ? 'Adicionar ao Carrinho' : 'IndisponÃ­vel'}
+                {product.available ? 'Adicionar ao Carrinho' : 'Indisponível'}
               </button>
             </div>
           </article>
@@ -1603,10 +1603,10 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
   const [activeTab, setActiveTab] = useState('overview');
 
   const tabs = [
-    { id: 'overview', label: 'VisÃ£o geral' },
+    { id: 'overview', label: 'Visão geral' },
     { id: 'features', label: 'Recursos' },
     { id: 'delivery', label: 'Entrega' },
-    { id: 'terms', label: 'ConfianÃ§a' },
+    { id: 'terms', label: 'Confiança' },
   ];
 
   return (
@@ -1627,7 +1627,7 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
             <ProductImage product={product} className="h-48" />
             <div className="mt-5 rounded-lg border border-ryuu-neon/18 bg-ryuu-neon/10 p-4">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-ryuu-soft">
-                Acesso vitalÃ­cio
+                Acesso vitalício
               </p>
               <p className="mt-1 text-4xl font-black">{formatCurrency(product.price)}</p>
               <p className="mt-2 text-sm text-pink-100/70">Estoque: {product.stock}</p>
@@ -1639,7 +1639,7 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-ryuu-violet to-ryuu-neon px-4 py-4 font-black text-white shadow-glow-sm transition enabled:hover:scale-[1.01] disabled:cursor-not-allowed disabled:from-zinc-700 disabled:to-zinc-600 disabled:text-zinc-300 disabled:shadow-none"
             >
               <ShoppingCart size={18} />
-              {product.available ? 'Comprar agora' : 'Produto indisponÃ­vel'}
+              {product.available ? 'Comprar agora' : 'Produto indisponível'}
             </button>
           </div>
 
@@ -1652,7 +1652,7 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
                   onClick={() => setActiveTab(tab.id)}
                     className={`rounded-full px-4 py-2 text-sm font-black transition ${
                       activeTab === tab.id
-                         'bg-ryuu-neon text-white shadow-glow-sm'
+                        ? 'bg-ryuu-neon text-white shadow-glow-sm'
                         : 'border border-pink-200/12 bg-white/5 text-pink-100/72 hover:border-ryuu-neon'
                     }`}
                 >
@@ -1666,8 +1666,8 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
                 <h3 className="text-2xl font-black">Smoke External</h3>
                 <p className="mt-3 leading-7 text-pink-100/76">{product.shortDescription || product.description}</p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <DetailPill icon={BadgeCheck} label="Status" value={product.available ? 'DisponÃ­vel' : 'IndisponÃ­vel'} />
-                  <DetailPill icon={KeyRound} label="Acesso" value="VitalÃ­cio" />
+                  <DetailPill icon={BadgeCheck} label="Status" value={product.available ? 'Disponível' : 'Indisponível'} />
+                  <DetailPill icon={KeyRound} label="Acesso" value="Vitalício" />
                   <DetailPill icon={ShieldCheck} label="Sistema" value="Windows 10/11" />
                   <DetailPill icon={Headphones} label="Suporte" value="Discord" />
                 </div>
@@ -1696,8 +1696,8 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
               <div className="rounded-lg border border-pink-200/12 bg-black/22 p-5">
                 <h3 className="text-2xl font-black">Entrega manual monitorada</h3>
                 <p className="mt-3 leading-7 text-pink-100/76">
-                  ApÃ³s a confirmaÃ§Ã£o do pagamento, a equipe Ryuu Cheats envia o acesso manualmente pelo Discord informado
-                  no checkout em atÃ© {deliveryHours} horas.
+                  Após a confirmação do pagamento, a equipe Ryuu Cheats envia o acesso manualmente pelo Discord informado
+                  no checkout em até {deliveryHours} horas.
                 </p>
                 <div className="mt-5 rounded-lg border border-ryuu-neon/20 bg-ryuu-neon/10 p-4 text-sm font-bold text-pink-100">
                   Informe seu usuario do Discord corretamente no checkout para evitar atraso na entrega.
@@ -1710,10 +1710,10 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
                 <h3 className="text-2xl font-black">Compra clara e suporte direto</h3>
                 <div className="mt-4 grid gap-3">
                   {[
-                    'Pagamento Ãºnico, sem assinatura ou renovaÃ§Ã£o.',
-                    'Produtos indisponÃ­veis ficam bloqueados para compra.',
-                    'Pedido aparece no dashboard do cliente apÃ³s confirmaÃ§Ã£o.',
-                    'Suporte e dÃºvidas pelo Discord oficial da Ryuu Cheats.',
+                    'Pagamento único, sem assinatura ou renovação.',
+                    'Produtos indisponíveis ficam bloqueados para compra.',
+                    'Pedido aparece no dashboard do cliente após confirmação.',
+                    'Suporte e dúvidas pelo Discord oficial da Ryuu Cheats.',
                   ].map((item) => (
                     <div key={item} className="flex gap-3 rounded-lg bg-white/[0.035] p-3 text-pink-100/78">
                       <ShieldCheck size={18} className="mt-0.5 shrink-0 text-ryuu-soft" />
@@ -1748,8 +1748,8 @@ function HomeSalesSections({ deliveryHours, setActiveView }) {
   const benefits = [
     {
       icon: Zap,
-      title: 'Acesso vitalÃ­cio',
-      text: 'Pagamento Ãºnico para o produto comprado.',
+      title: 'Acesso vitalício',
+      text: 'Pagamento único para o produto comprado.',
     },
     {
       icon: Headphones,
@@ -1760,16 +1760,16 @@ function HomeSalesSections({ deliveryHours, setActiveView }) {
 
   const faqs = [
     {
-      q: 'O acesso Ã© mensal',
-      a: 'NÃ£o. O acesso Ã© vitalÃ­cio.',
+      q: 'O acesso ? mensal',
+      a: 'Não. O acesso ? vitalício.',
     },
     {
-      q: 'Quais sistemas sÃ£o compatÃ­veis',
+      q: 'Quais sistemas são compatéveis',
       a: 'O Ryuu External informa compatibilidade com Windows 10 e Windows 11.',
     },
     {
       q: 'Em quanto tempo recebo',
-      a: `Em atÃ© ${deliveryHours} horas apÃ³s o pagamento.`,
+      a: `Em até ${deliveryHours} horas após o pagamento.`,
     },
   ];
 
@@ -1793,7 +1793,7 @@ function HomeSalesSections({ deliveryHours, setActiveView }) {
       <div className="mt-8 grid gap-5 lg:grid-cols-[0.55fr_1fr] lg:items-start">
         <div>
           <p className="text-sm font-black uppercase tracking-[0.22em] text-ryuu-soft">FAQ</p>
-          <h2 className="mt-2 text-3xl font-black">DÃºvidas rÃ¡pidas</h2>
+          <h2 className="mt-2 text-3xl font-black">Dúvidas rápidas</h2>
         </div>
         <div className="grid gap-3">
           {faqs.map((item) => (
@@ -1816,12 +1816,12 @@ function StatusBadge({ available }) {
     <span
         className={`inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1 text-xs font-black ${
           available
-             'bg-emerald-400/12 text-emerald-300 ring-1 ring-emerald-300/30'
+            ? 'bg-emerald-400/12 text-emerald-300 ring-1 ring-emerald-300/30'
             : 'bg-red-400/10 text-red-200 ring-1 ring-red-300/20'
         }`}
     >
       <span className={`h-2 w-2 rounded-full ${available ? 'animate-pulse bg-emerald-300' : 'bg-red-300'}`} />
-      {available ? 'DisponÃ­vel' : 'IndisponÃ­vel'}
+      {available ? 'Disponível' : 'Indisponível'}
     </span>
   );
 }
@@ -1865,8 +1865,8 @@ function CartDrawer({
             <div className="grid min-h-64 place-items-center rounded-lg border border-dashed border-pink-200/18 text-center">
               <div>
                 <ShoppingCart className="mx-auto mb-3 text-pink-200/60" size={36} />
-                <p className="font-bold">Seu carrinho estÃ¡ vazio.</p>
-                <p className="mt-1 text-sm text-pink-100/60">Adicione um produto disponÃ­vel para continuar.</p>
+                <p className="font-bold">Seu carrinho está vazio.</p>
+                <p className="mt-1 text-sm text-pink-100/60">Adicione um produto disponível para continuar.</p>
               </div>
             </div>
           ) : (
@@ -1924,7 +1924,7 @@ function CartDrawer({
             />
             {couponCode && (
               <p className={`mt-2 text-sm font-semibold ${activeCoupon ? 'text-emerald-300' : 'text-red-200'}`}>
-                {activeCoupon ? `Cupom aplicado: ${activeCoupon.label}` : 'Cupom invÃ¡lido ou expirado.'}
+                {activeCoupon ? `Cupom aplicado: ${activeCoupon.label}` : 'Cupom inv?lido ou expirado.'}
               </p>
             )}
           </div>
@@ -2136,7 +2136,7 @@ function MercadoPagoBrick({ publicKey, amount, enabled, disabled, onPayment }) {
   if (!enabled) {
     return (
       <div className="mt-4 rounded-lg border border-pink-200/12 bg-black/24 p-4 text-sm font-bold text-pink-100/70">
-        Pagamento indisponÃ­vel no momento.
+        Pagamento indisponível no momento.
       </div>
     );
   }
@@ -2146,7 +2146,7 @@ function MercadoPagoBrick({ publicKey, amount, enabled, disabled, onPayment }) {
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <span className="rounded-full border border-ryuu-neon/25 bg-ryuu-neon/10 px-3 py-1 text-xs font-black text-ryuu-soft">
-            CartÃ£o
+            Cartão
           </span>
         </div>
         {!isReady && <span className="text-xs font-black text-ryuu-soft">Carregando...</span>}
@@ -2234,7 +2234,7 @@ function PixPaymentBox({ pixPayment, pixTimeLeft, disabled, isProcessingPayment,
             </button>
           </div>
           <p className="rounded-lg border border-amber-200/20 bg-amber-300/10 p-3 text-sm font-bold text-amber-100">
-            ApÃ³s pagar, a aprovaÃ§Ã£o Ã© automÃ¡tica. O pedido muda para *Aguardando Envio* assim que o banco confirmar.
+            Após pagar, a aprova??o ? autom?tica. O pedido muda para *Aguardando Envio* assim que o banco confirmar.
           </p>
         </div>
       )}
@@ -2270,7 +2270,7 @@ function Checkout({
           </div>
           <h1 className="text-3xl font-black">Pedido criado</h1>
           <p className="mt-4 leading-8 text-pink-100/76">
-            Seu pedido foi salvo. Assim que o pagamento for confirmado, a equipe envia o acesso em atÃ© {deliveryHours}{' '}
+            Seu pedido foi salvo. Assim que o pagamento for confirmado, a equipe envia o acesso em até {deliveryHours}{' '}
             horas.
           </p>
           <button
@@ -2324,7 +2324,7 @@ function Checkout({
           </label>
 
           <div className="mt-5 rounded-lg border border-amber-200/20 bg-amber-300/10 p-4 text-amber-100">
-            ApÃ³s a confirmaÃ§Ã£o do pagamento, seu acesso serÃ¡ enviado manualmente por nossa equipe em atÃ©{' '}
+            Após a confirmação do pagamento, seu acesso será enviado manualmente por nossa equipe em até{' '}
             <strong>{deliveryHours} horas</strong>.
           </div>
         </div>
@@ -2344,7 +2344,7 @@ function Checkout({
               Informe seu Discord antes de pagar.
             </div>
           )}
-          <h3 className="text-sm font-black uppercase tracking-[0.18em] text-ryuu-soft">MÃ©todos de pagamento</h3>
+          <h3 className="text-sm font-black uppercase tracking-[0.18em] text-ryuu-soft">Métodos de pagamento</h3>
           <PixPaymentBox
             pixPayment={pixPayment}
             pixTimeLeft={pixTimeLeft}
@@ -2386,8 +2386,8 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
       <section className="mx-auto grid min-h-[68vh] max-w-2xl place-items-center px-4 py-16 text-center">
         <div className="glass rounded-lg p-8">
           <Lock className="mx-auto mb-4 text-ryuu-soft" size={42} />
-          <h1 className="text-3xl font-black">Login obrigatÃ³rio</h1>
-          <p className="mt-3 text-pink-100/70">Entre na sua conta para ver histÃ³rico de compras e dados do perfil.</p>
+          <h1 className="text-3xl font-black">Login obrigatório</h1>
+          <p className="mt-3 text-pink-100/70">Entre na sua conta para ver histórico de compras e dados do perfil.</p>
           <button
             type="button"
             onClick={() => setIsAuthOpen(true)}
@@ -2426,7 +2426,7 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
             }}
             className={`rounded-full px-4 py-2 text-sm font-black transition ${
               accountTab === id
-                 'bg-ryuu-neon text-white shadow-glow-sm'
+                ? 'bg-ryuu-neon text-white shadow-glow-sm'
                 : 'border border-pink-200/12 bg-white/5 text-pink-100/72 hover:border-ryuu-neon'
             }`}
           >
@@ -2436,7 +2436,7 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[0.72fr_1fr]">
-        <div className={`glass rounded-lg p-6 ${accountTab !== 'perfil'  'hidden lg:block' : ''}`}>
+        <div className={`glass rounded-lg p-6 ${accountTab !== 'perfil' ? 'hidden lg:block' : ''}`}>
           <h2 className="mb-4 text-2xl font-black">Perfil</h2>
           <ProfileEditor profile={profile} currentUser={currentUser} userRole={userRole} saveProfile={saveProfile} />
           <a
@@ -2455,9 +2455,9 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
             <>
               <h2 className="mb-4 text-2xl font-black">Resumo</h2>
               <div className="grid gap-3 sm:grid-cols-3">
-                <AccountMiniStat label="Cargo" value={roleLabels[userRole] || 'UsuÃ¡rio'} />
+                <AccountMiniStat label="Cargo" value={roleLabels[userRole] || 'Usuário'} />
                 <AccountMiniStat label="Pedidos" value={String(orderStatus.length)} />
-                <AccountMiniStat label="Discord" value={profile?.discord || 'NÃ£o vinculado'} />
+                <AccountMiniStat label="Discord" value={profile?.discord || 'Não vinculado'} />
               </div>
             </>
           )}
@@ -2472,7 +2472,7 @@ function UserDashboard({ isLoggedIn, userRole, setIsAuthOpen, setActiveView, ord
                   order.product,
                   formatCurrency(order.value),
                   order.status,
-                  order.discord || profile?.discord || 'NÃ£o informado',
+                  order.discord || profile?.discord || 'Não informado',
                   order.date || 'Sem data',
                 ])}
               />
@@ -2549,16 +2549,16 @@ function AccountMiniStat({ label, value }) {
 
 function ProfileEditor({ profile, currentUser, userRole, saveProfile }) {
   const [draft, setDraft] = useState({
-    name: profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Cliente Ryuu',
-    email: profile?.email || currentUser?.email || '',
+    name: profile?.name || currentUserá.user_metadata?.name || currentUserá.email?.split('@')[0] || 'Cliente Ryuu',
+    email: profile?.email || currentUserá.email || '',
     discord: profile?.discord || '',
     password: '',
   });
 
   useEffect(() => {
     setDraft({
-      name: profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Cliente Ryuu',
-      email: profile?.email || currentUser?.email || '',
+      name: profile?.name || currentUserá.user_metadata?.name || currentUserá.email?.split('@')[0] || 'Cliente Ryuu',
+      email: profile?.email || currentUserá.email || '',
       discord: profile?.discord || '',
       password: '',
     });
@@ -2588,7 +2588,7 @@ function ProfileEditor({ profile, currentUser, userRole, saveProfile }) {
       <label className="grid gap-1 text-sm font-bold text-pink-100">
         Cargo
         <input
-          value={roleLabels[userRole] || 'UsuÃ¡rio'}
+          value={roleLabels[userRole] || 'Usuário'}
           disabled
           className="rounded-lg border border-pink-200/15 bg-black/28 px-4 py-3 font-normal text-pink-100/78 outline-none"
         />
@@ -2636,12 +2636,12 @@ function AdminDashboard({
 }) {
   const [orderFilter, setOrderFilter] = useState('Todos');
   const [couponDraft, setCouponDraft] = useState({ code: '', value: '', type: 'Percentual' });
-  const adminName = profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Admin';
+  const adminName = profile?.name || currentUserá.user_metadata?.name || currentUserá.email?.split('@')[0] || 'Admin';
   const revenue = adminOrders.reduce((total, order) => total + order.value, 0);
   const sentCount = adminOrders.filter((order) => order.status === 'Acesso Enviado').length;
   const filteredOrders =
     orderFilter === 'Todos' ? adminOrders : adminOrders.filter((order) => order.status === orderFilter);
-  const weeklySalesDate = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'SÃ¡b', 'Dom'].map((label) => ({
+  const weeklySalesDate = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((label) => ({
     label,
     vendas: 0,
     pedidos: 0,
@@ -2663,7 +2663,7 @@ function AdminDashboard({
           <Lock className="mx-auto mb-4 text-ryuu-soft" size={42} />
           <h1 className="text-3xl font-black">Acesso administrativo bloqueado</h1>
           <p className="mt-3 text-pink-100/70">
-            Esta Ã¡rea aparece somente para contas com cargo Administrador.
+            Esta área aparece somente para contas com cargo Administrador.
           </p>
         </div>
       </section>
@@ -2672,7 +2672,7 @@ function AdminDashboard({
 
   const createCoupon = async () => {
     if (!couponDraft.code.trim() || !couponDraft.value.trim()) {
-      notify('Preencha cÃ³digo e valor do cupom.', 'warning');
+      notify('Preencha código e valor do cupom.', 'warning');
       return;
     }
 
@@ -2737,7 +2737,7 @@ function AdminDashboard({
 
   const updateUserRole = async (userId, role) => {
     if (!userId) {
-      notify('UsuÃ¡rio sem ID.', 'error');
+      notify('Usuário sem ID.', 'error');
       return;
     }
 
@@ -2763,7 +2763,7 @@ function AdminDashboard({
     }
 
     if (!isSupabaseConfigured) {
-      notify('Supabase Storage nÃ£o configurado.', 'error');
+      notify('Supabase Storage não configurado.', 'error');
       return;
     }
 
@@ -2791,7 +2791,7 @@ function AdminDashboard({
           <p className="text-sm font-black uppercase tracking-[0.22em] text-ryuu-soft">Admin Dashboard</p>
           <h1 className="mt-2 text-4xl font-black">Painel administrativo</h1>
           <p className="mt-3 max-w-2xl text-pink-100/62">
-            Controle pedidos, produtos, usuÃ¡rios e cupons em um sÃ³ lugar.
+            Controle pedidos, produtos, usuários e cupons em um só lugar.
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full border border-ryuu-neon/25 bg-ryuu-deep/40 px-4 py-2 text-sm font-bold text-pink-100">
@@ -2804,7 +2804,7 @@ function AdminDashboard({
           ['Resumo', '#admin-resumo'],
           ['Pedidos', '#admin-pedidos'],
           ['Produtos', '#admin-produtos'],
-          ['UsuÃ¡rios', '#admin-usuarios'],
+          ['Usuários', '#admin-usuarios'],
           ['Cupons', '#admin-cupons'],
         ].map(([label, href]) => (
           <a
@@ -2890,7 +2890,7 @@ function AdminDashboard({
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="text-pink-100/62">
                 <tr>
-                  {['Pedido', 'Cliente', 'Produto', 'Status', 'Discord', 'AÃ§Ãµes'].map((header) => (
+                  {['Pedido', 'Cliente', 'Produto', 'Status', 'Discord', 'Ações'].map((header) => (
                     <th key={header} className="border-b border-pink-200/10 px-3 py-3 font-black">
                       {header}
                     </th>
@@ -2941,7 +2941,7 @@ function AdminDashboard({
 
         <div className="space-y-6">
           <div className="glass rounded-lg p-6">
-            <h2 className="mb-4 text-2xl font-black">ConfiguraÃ§Ãµes</h2>
+            <h2 className="mb-4 text-2xl font-black">Configurações</h2>
             <label className="grid gap-2 text-sm font-black text-pink-100">
               Tempo de entrega exibido no checkout
               <input
@@ -2960,7 +2960,7 @@ function AdminDashboard({
         <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <h2 className="text-2xl font-black">Produtos</h2>
-            <p className="mt-1 text-sm text-pink-100/58">Edite preÃ§o, estoque, imagens e descriÃ§Ãµes com mais espaÃ§o.</p>
+            <p className="mt-1 text-sm text-pink-100/58">Edite preço, estoque, imagens e descrições com mais espaço.</p>
           </div>
           <button
             type="button"
@@ -2986,7 +2986,7 @@ function AdminDashboard({
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <AdminPanel title="Gerenciamento de usuÃ¡rios" icon={Users} id="admin-usuarios">
+        <AdminPanel title="Gerenciamento de usuários" icon={Users} id="admin-usuarios">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[680px] text-left text-sm">
               <thead className="text-pink-100/62">
@@ -3002,7 +3002,7 @@ function AdminDashboard({
                 {adminUsers.length === 0 ? (
                   <tr>
                     <td colSpan="5" className="px-3 py-8 text-center text-pink-100/58">
-                      Nenhum usuÃ¡rio ainda.
+                      Nenhum usuário ainda.
                     </td>
                   </tr>
                 ) : (
@@ -3017,7 +3017,7 @@ function AdminDashboard({
                           onChange={(event) => updateUserRole(user.id, event.target.value)}
                           className="rounded-lg border border-pink-200/15 bg-black/40 px-3 py-2 text-sm font-bold outline-none focus:border-ryuu-neon"
                         >
-                          <option value="usuario">UsuÃ¡rio</option>
+                          <option value="usuario">Usuário</option>
                           <option value="cliente">Cliente</option>
                           <option value="administrador">Administrador</option>
                         </select>
@@ -3036,7 +3036,7 @@ function AdminDashboard({
             <input
               value={couponDraft.code}
               onChange={(event) => setCouponDraft((current) => ({ ...current, code: event.target.value }))}
-              placeholder="CÃ³digo"
+              placeholder="Código"
               className="rounded-lg border border-pink-200/15 bg-black/40 px-3 py-2 text-sm outline-none focus:border-ryuu-neon"
             />
             <select
@@ -3065,7 +3065,7 @@ function AdminDashboard({
             <table className="w-full min-w-[560px] text-left text-sm">
               <thead className="text-pink-100/62">
                 <tr>
-                  {['CÃ³digo', 'Tipo', 'Valor', 'Limite', 'Status', 'AÃ§Ãµes'].map((header) => (
+                  {['Código', 'Tipo', 'Valor', 'Limite', 'Status', 'Ações'].map((header) => (
                     <th key={header} className="border-b border-pink-200/10 px-3 py-3 font-black">
                       {header}
                     </th>
@@ -3144,11 +3144,11 @@ function AdminProductEditor({
         <span
           className={`w-fit rounded-full px-3 py-1 text-xs font-black ${
             product.available
-               'border border-emerald-300/25 bg-emerald-400/10 text-emerald-200'
+              ? 'border border-emerald-300/25 bg-emerald-400/10 text-emerald-200'
               : 'border border-red-300/20 bg-red-400/10 text-red-100'
           }`}
         >
-          {product.available ? 'DisponÃ­vel' : 'IndisponÃ­vel'}
+          {product.available ? 'Disponível' : 'Indisponível'}
         </span>
       </div>
 
@@ -3165,7 +3165,7 @@ function AdminProductEditor({
               />
             </AdminField>
             <label className="rounded-lg border border-dashed border-ryuu-neon/35 bg-ryuu-neon/8 px-3 py-3 text-center text-xs font-black text-ryuu-soft transition hover:bg-ryuu-neon/12">
-              Enviar imagem/GIF atÃ© 20MB
+              Enviar imagem/GIF até 20MB
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif"
@@ -3191,13 +3191,13 @@ function AdminProductEditor({
                 onChange={(event) => updataProduct(product.id, 'available', event.target.value === 'available')}
                 className="admin-input"
               >
-                <option value="available">DisponÃ­vel</option>
-                <option value="unavailable">IndisponÃ­vel</option>
+                <option value="available">Disponível</option>
+                <option value="unavailable">Indisponível</option>
               </select>
             </AdminField>
           </div>
 
-          <AdminField label="DescriÃ§Ã£o curta">
+          <AdminField label="Descrição curta">
             <input
               value={product.shortDescription || ''}
               onChange={(event) => updataProduct(product.id, 'shortDescription', event.target.value)}
@@ -3206,7 +3206,7 @@ function AdminProductEditor({
             />
           </AdminField>
 
-          <AdminField label="DescriÃ§Ã£o completa">
+          <AdminField label="Descrição completa">
             <textarea
               value={product.description}
               onChange={(event) => updataProduct(product.id, 'description', event.target.value)}
@@ -3215,7 +3215,7 @@ function AdminProductEditor({
           </AdminField>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <AdminField label="PreÃ§o">
+            <AdminField label="Preço">
               <input
                 type="number"
                 min="0"
@@ -3336,14 +3336,14 @@ function Footer() {
         <div className="flex items-center gap-3">
           <img
             src={iconGif}
-            alt="ÃCONE GIF Ryuu Cheats"
+            alt="ÍCONE GIF Ryuu Cheats"
             loading="lazy"
             decoding="async"
             className="h-11 w-11 rounded-lg object-cover"
           />
           <div>
             <p className="font-black">Ryuu Cheats</p>
-            <p className="text-sm text-pink-100/62">Acesso vitalÃ­cio.</p>
+            <p className="text-sm text-pink-100/62">Acesso vitalício.</p>
           </div>
         </div>
         <a
