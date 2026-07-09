@@ -15,6 +15,7 @@ import {
   BadgeCheck,
   Check,
   ChevronRight,
+  ChevronDown,
   CreditCard,
   Crown,
   Disc3,
@@ -26,6 +27,7 @@ import {
   KeyRound,
   Lock,
   LogIn,
+  LogOut,
   Menu,
   PackageCheck,
   Save,
@@ -213,6 +215,7 @@ function App() {
   const [activeView, setActiveView] = useState('home');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [deliveryHours, setDeliveryHours] = useState(24);
   const [discordUser, setDiscordUser] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -236,7 +239,7 @@ function App() {
   const ensureProfile = async (user) => {
     if (!isSupabaseConfigured || !user) return null;
 
-    const { data: existingProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    const { data: existingProfile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
     if (existingProfile) return existingProfile;
 
     const nextProfile = {
@@ -247,7 +250,7 @@ function App() {
       role: 'usuario',
     };
 
-    const { data, error } = await supabase.from('profiles').insert(nextProfile).select('*').single();
+    const { data, error } = await supabase.from('profiles').upsert(nextProfile, { onConflict: 'id' }).select('*').single();
     if (error) {
       notify(error.message, 'error');
       return null;
@@ -290,14 +293,14 @@ function App() {
 
       if (user) {
         const query =
-          nextProfile.role === 'administrador'
+          nextProfile?.role === 'administrador'
             ? supabase.from('orders').select('*').order('created_at', { ascending: false })
             : supabase.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
         const { data: dbOrders, error: ordersError } = await query;
         if (ordersError) throw ordersError;
         setOrderStatus((dbOrders || []).map(dbOrderToOrder));
 
-        if (nextProfile.role === 'administrador') {
+        if (nextProfile?.role === 'administrador') {
           const { data: dbProfiles, error: profilesError } = await supabase
             .from('profiles')
             .select('*')
@@ -338,8 +341,8 @@ function App() {
         const nextProfile = await ensureProfile(user);
         if (!mounted) return;
         setProfile(nextProfile);
-        setUserRole(nextProfile.role || 'usuario');
-        setDiscordUser(nextProfile.discord || '');
+        setUserRole(nextProfile?.role || 'usuario');
+        setDiscordUser(nextProfile?.discord || '');
         await loadStoreData(user, nextProfile);
       } else {
         await loadStoreData(null, null);
@@ -355,8 +358,8 @@ function App() {
       if (user) {
         const nextProfile = await ensureProfile(user);
         setProfile(nextProfile);
-        setUserRole(nextProfile.role || 'usuario');
-        setDiscordUser(nextProfile.discord || '');
+        setUserRole(nextProfile?.role || 'usuario');
+        setDiscordUser(nextProfile?.discord || '');
         await loadStoreData(user, nextProfile);
       } else {
         setProfile(null);
@@ -598,7 +601,7 @@ function App() {
 
   const handleAuth = async (event) => {
     event.preventDefault();
-    const formDate = new FormDate(event.currentTarget);
+    const formDate = new FormData(event.currentTarget);
     const email = String(formDate.get('email') || '').trim().toLowerCase();
     const password = String(formDate.get('password') || '');
     const name = String(formDate.get('name') || '').trim();
@@ -628,11 +631,29 @@ function App() {
       setCurrentUser(user);
       setProfile(nextProfile);
       setIsLoggedIn(true);
-      setUserRole(nextProfile.role || 'usuario');
+      setUserRole(nextProfile?.role || 'usuario');
     }
 
     setIsAuthOpen(false);
-    notify(authTab === 'login' ? 'Login realizado.' : 'Conta criada.');
+    notify(response.data.session ? (authTab === 'login' ? 'Login realizado.' : 'Conta criada.') : 'Confira seu Gmail para confirmar a conta.');
+  };
+
+  const handleSignOut = async () => {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        notify(error.message, 'error');
+        return;
+      }
+    }
+
+    setCurrentUser(null);
+    setProfile(null);
+    setIsLoggedIn(false);
+    setUserRole('usuario');
+    setUserMenuOpen(false);
+    setActiveView('home');
+    notify('Você saiu da conta.');
   };
 
   const handleDiscordAuth = async () => {
@@ -803,8 +824,13 @@ function App() {
         cartCount={cartCount}
         setIsCartOpen={setIsCartOpen}
         setIsAuthOpen={setIsAuthOpen}
+        setUserMenuOpen={setUserMenuOpen}
+        userMenuOpen={userMenuOpen}
         isLoggedIn={isLoggedIn}
         userRole={userRole}
+        profile={profile}
+        currentUser={currentUser}
+        handleSignOut={handleSignOut}
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
       />
@@ -923,15 +949,33 @@ function Navbar({
   cartCount,
   setIsCartOpen,
   setIsAuthOpen,
+  userMenuOpen,
+  setUserMenuOpen,
   isLoggedIn,
   userRole,
+  profile,
+  currentUser,
+  handleSignOut,
   mobileMenuOpen,
   setMobileMenuOpen,
 }) {
+  const userName = profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Usuário';
+  const userButtonLabel = isLoggedIn ? userName : 'Entrar';
+
   const navigate = (id) => {
     setActiveView(id);
     setMobileMenuOpen(false);
+    setUserMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleUserButtonClick = () => {
+    if (!isLoggedIn) {
+      setIsAuthOpen(true);
+      return;
+    }
+
+    setUserMenuOpen((value) => !value);
   };
 
   return (
@@ -981,14 +1025,52 @@ function Navbar({
               </span>
             )}
           </button>
-          <button
-            type="button"
-            onClick={() => setIsAuthOpen(true)}
-            className="hidden items-center gap-2 rounded-full bg-gradient-to-r from-ryuu-violet to-ryuu-neon px-4 py-2 text-sm font-bold shadow-glow-sm transition hover:scale-[1.02] sm:flex"
-          >
+          <div className="relative hidden sm:block">
+            <button
+              type="button"
+              onClick={handleUserButtonClick}
+              className="flex max-w-48 items-center gap-2 rounded-full bg-gradient-to-r from-ryuu-violet to-ryuu-neon px-4 py-2 text-sm font-bold shadow-glow-sm transition hover:scale-[1.02]"
+            >
               {isLoggedIn ? <User size={17} /> : <LogIn size={17} />}
-              {isLoggedIn ? roleLabels[userRole] : 'Entrar'}
-          </button>
+              <span className="truncate">{userButtonLabel}</span>
+              {isLoggedIn && <ChevronDown size={15} />}
+            </button>
+
+            {isLoggedIn && userMenuOpen && (
+              <div className="absolute right-0 mt-3 w-56 overflow-hidden rounded-lg border border-purple-200/15 bg-ryuu-ink shadow-glow">
+                <div className="border-b border-purple-200/10 px-4 py-3">
+                  <p className="truncate text-sm font-black">{userName}</p>
+                  <p className="text-xs font-semibold text-ryuu-soft">{roleLabels[userRole]}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('dashboard')}
+                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-purple-100 hover:bg-white/8"
+                >
+                  <User size={16} />
+                  Minha conta
+                </button>
+                {userRole === 'administrador' && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('admin')}
+                    className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-bold text-purple-100 hover:bg-white/8"
+                  >
+                    <ShieldCheck size={16} />
+                    Admin
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="flex w-full items-center gap-2 border-t border-purple-200/10 px-4 py-3 text-left text-sm font-bold text-red-200 hover:bg-red-500/10"
+                >
+                  <LogOut size={16} />
+                  Sair
+                </button>
+              </div>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => setMobileMenuOpen((value) => !value)}
@@ -1015,11 +1097,36 @@ function Navbar({
             ))}
             <button
               type="button"
-              onClick={() => setIsAuthOpen(true)}
+              onClick={() => {
+                if (isLoggedIn) {
+                  navigate('dashboard');
+                } else {
+                  setIsAuthOpen(true);
+                  setMobileMenuOpen(false);
+                }
+              }}
               className="rounded-lg bg-ryuu-neon px-3 py-2 text-left text-sm font-bold"
             >
-              {isLoggedIn ? `Cargo: ${roleLabels[userRole]}` : 'Entrar / Cadastrar'}
+              {isLoggedIn ? userName : 'Entrar / Cadastrar'}
             </button>
+            {isLoggedIn && userRole === 'administrador' && (
+              <button
+                type="button"
+                onClick={() => navigate('admin')}
+                className="rounded-lg px-3 py-2 text-left text-sm font-semibold text-purple-100 hover:bg-white/8"
+              >
+                Admin
+              </button>
+            )}
+            {isLoggedIn && (
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="rounded-lg px-3 py-2 text-left text-sm font-semibold text-red-200 hover:bg-red-500/10"
+              >
+                Sair
+              </button>
+            )}
           </div>
         </div>
       )}
