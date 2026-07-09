@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .admin-input {
+    @apply w-full rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 text-sm normal-case tracking-normal text-white outline-none transition focus:border-ryuu-neon;
+  }
+}
+
 :root {
   color-scheme: dark;
   background: #0d0d0d;

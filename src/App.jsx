@@ -1833,17 +1833,15 @@ function MercadoPagoBrick({ publicKey, amount, enabled, disabled, onPayment }) {
             },
             paymentMethods: {
               creditCard: 'all',
-              debitCard: 'all',
-              ticket: 'all',
               bankTransfer: 'all',
               maxInstallments: 1,
             },
           },
           callbacks: {
             onReady: () => setIsReady(true),
-            onSubmit: ({ formDate }) =>
+            onSubmit: ({ formData }) =>
               new Promise((resolve, reject) => {
-                onPaymentRef.current(formDate).then(resolve).catch(reject);
+                onPaymentRef.current(formData).then(resolve).catch(reject);
               }),
             onError: (error) => {
               setBrickError(error.message || 'Erro ao carregar Mercado Pago.');
@@ -1866,25 +1864,24 @@ function MercadoPagoBrick({ publicKey, amount, enabled, disabled, onPayment }) {
   if (!enabled) {
     return (
       <div className="mt-4 rounded-lg border border-purple-200/12 bg-black/24 p-4 text-sm font-bold text-purple-100/70">
-        Configure o Mercado Pago para ativar PIX e cartão dentro da loja.
+        Pagamento indisponível no momento.
       </div>
     );
   }
 
   return (
-    <div className={`mt-5 rounded-lg border border-purple-200/12 bg-black/24 p-3 ${disabled ? 'opacity-55' : ''}`}>
+    <div className={`mt-5 rounded-lg border border-purple-200/12 bg-black/24 p-3 ${disabled ? 'opacity-65' : ''}`}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <p className="font-black">Mercado Pago</p>
-          <p className="text-xs font-bold text-purple-100/60">PIX e cartão sem sair da loja.</p>
+        <div className="flex flex-wrap gap-2">
+          <span className="rounded-full border border-ryuu-neon/25 bg-ryuu-neon/10 px-3 py-1 text-xs font-black text-ryuu-soft">
+            Pix
+          </span>
+          <span className="rounded-full border border-ryuu-neon/25 bg-ryuu-neon/10 px-3 py-1 text-xs font-black text-ryuu-soft">
+            Cartão
+          </span>
         </div>
         {!isReady && <span className="text-xs font-black text-ryuu-soft">Carregando...</span>}
       </div>
-      {disabled && (
-        <div className="mb-3 rounded-md border border-amber-200/20 bg-amber-300/10 p-3 text-xs font-bold text-amber-100">
-          Informe seu Discord antes de pagar.
-        </div>
-      )}
       {brickError && (
         <div className="mb-3 rounded-md border border-red-300/25 bg-red-500/10 p-3 text-xs font-bold text-red-100">
           {brickError}
@@ -1976,11 +1973,6 @@ function Checkout({
 
         <div className="glass rounded-lg p-6">
           <h2 className="text-2xl font-black">Resumo</h2>
-          <div className="mt-4 rounded-lg border border-purple-200/12 bg-black/24 p-3 text-sm font-bold text-purple-100/72">
-            {integrations.mercadoPago
-              ? 'Mercado Pago ativo para PIX e cartão.'
-              : 'Configure o Mercado Pago para finalizar pedidos.'}
-          </div>
           <div className="my-5 border-y border-purple-200/10 py-4">
             <PriceRow label="Subtotal" value={subtotal} />
             <PriceRow label={activeCoupon ? `Cupom ${activeCoupon.code}` : 'Desconto'} value={discount} negative />
@@ -1989,6 +1981,12 @@ function Checkout({
               <span>{formatCurrency(total)}</span>
             </div>
           </div>
+          {!discordUser.trim() && (
+            <div className="mb-4 rounded-lg border border-amber-200/20 bg-amber-300/10 p-3 text-sm font-black text-amber-100">
+              Informe seu Discord antes de pagar.
+            </div>
+          )}
+          <h3 className="text-sm font-black uppercase tracking-[0.18em] text-ryuu-soft">Métodos de pagamento</h3>
           <MercadoPagoBrick
             publicKey={appConfig.mercadoPago.publicKey}
             amount={total}
@@ -2597,90 +2595,15 @@ function AdminDashboard({
             </div>
             <div className="grid gap-4">
               {products.map((product) => (
-                <div key={product.id} className="rounded-lg border border-purple-200/12 bg-black/22 p-4">
-                  <ProductImage product={product} className="mb-3 h-40" />
-                  <input
-                    value={product.name}
-                    onChange={(event) => updataProduct(product.id, 'name', event.target.value)}
-                    className="w-full rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 font-black outline-none focus:border-ryuu-neon"
-                  />
-                  <input
-                    value={product.shortDescription || ''}
-                    onChange={(event) => updataProduct(product.id, 'shortDescription', event.target.value)}
-                    placeholder="Descrição curta"
-                    className="mt-2 w-full rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 text-sm outline-none focus:border-ryuu-neon"
-                  />
-                  <textarea
-                    value={product.description}
-                    onChange={(event) => updataProduct(product.id, 'description', event.target.value)}
-                    className="mt-2 h-24 w-full rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 text-sm outline-none focus:border-ryuu-neon"
-                  />
-                  <div className="mt-2 grid gap-2">
-                    <input
-                      value={product.image || ''}
-                      onChange={(event) => updataProduct(product.id, 'image', event.target.value)}
-                      placeholder="URL da imagem/GIF ou texto do placeholder"
-                      className="rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 text-sm outline-none focus:border-ryuu-neon"
-                    />
-                    <label className="rounded-lg border border-dashed border-ryuu-neon/35 bg-ryuu-neon/8 px-3 py-3 text-center text-xs font-black text-ryuu-soft transition hover:bg-ryuu-neon/12">
-                      Enviar imagem/GIF até 20MB
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp,image/gif"
-                        className="hidden"
-                        onChange={(event) => handleProductImageUpload(product, event.target.files?.[0])}
-                      />
-                    </label>
-                  </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    <input
-                      type="number"
-                      value={product.price}
-                      onChange={(event) => updataProduct(product.id, 'price', event.target.value)}
-                      className="rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 outline-none focus:border-ryuu-neon"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      value={product.stock || 0}
-                      onChange={(event) => updataProduct(product.id, 'stock', event.target.value)}
-                      className="rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 outline-none focus:border-ryuu-neon"
-                      title="Estoque"
-                    />
-                    <select
-                      value={product.available ? 'available' : 'unavailable'}
-                      onChange={(event) => updataProduct(product.id, 'available', event.target.value === 'available')}
-                      className="rounded-lg border border-purple-200/15 bg-black/40 px-3 py-2 outline-none focus:border-ryuu-neon"
-                    >
-                      <option value="available">Disponível</option>
-                      <option value="unavailable">Indisponível</option>
-                    </select>
-                  </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => saveProduct(product)}
-                      className="flex items-center justify-center gap-2 rounded-lg border border-ryuu-neon/25 bg-ryuu-neon/10 px-3 py-2 text-xs font-black text-ryuu-soft"
-                    >
-                      <Save size={15} />
-                      Salvar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => duplicateProduct(product)}
-                      className="rounded-lg border border-purple-200/15 bg-white/5 px-3 py-2 text-xs font-black text-purple-100"
-                    >
-                      Duplicar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeProduct(product.id)}
-                      className="rounded-lg border border-red-300/20 bg-red-400/10 px-3 py-2 text-xs font-black text-red-100"
-                    >
-                      Excluir
-                    </button>
-                  </div>
-                </div>
+                <AdminProductEditor
+                  key={product.id}
+                  product={product}
+                  updataProduct={updataProduct}
+                  saveProduct={saveProduct}
+                  duplicateProduct={duplicateProduct}
+                  removeProduct={removeProduct}
+                  handleProductImageUpload={handleProductImageUpload}
+                />
               ))}
             </div>
           </div>
@@ -2824,6 +2747,159 @@ function AdminStat({ icon: Icon, label, value }) {
       <p className="text-sm text-purple-100/62">{label}</p>
       <p className="mt-1 text-3xl font-black">{value}</p>
     </div>
+  );
+}
+
+function AdminProductEditor({
+  product,
+  updataProduct,
+  saveProduct,
+  duplicateProduct,
+  removeProduct,
+  handleProductImageUpload,
+}) {
+  return (
+    <div className="rounded-lg border border-purple-200/12 bg-black/24 p-4">
+      <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-ryuu-soft">Produto</p>
+          <h3 className="mt-1 text-xl font-black">{product.name}</h3>
+          <p className="mt-1 text-xs text-purple-100/48">ID: {product.id}</p>
+        </div>
+        <span
+          className={`w-fit rounded-full px-3 py-1 text-xs font-black ${
+            product.available
+              ? 'border border-emerald-300/25 bg-emerald-400/10 text-emerald-200'
+              : 'border border-red-300/20 bg-red-400/10 text-red-100'
+          }`}
+        >
+          {product.available ? 'Disponível' : 'Indisponível'}
+        </span>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[0.82fr_1.18fr]">
+        <div>
+          <ProductImage product={product} className="h-52" />
+          <div className="mt-3 grid gap-2">
+            <AdminField label="Imagem ou GIF">
+              <input
+                value={product.image || ''}
+                onChange={(event) => updataProduct(product.id, 'image', event.target.value)}
+                placeholder="URL da imagem/GIF ou texto do placeholder"
+                className="admin-input"
+              />
+            </AdminField>
+            <label className="rounded-lg border border-dashed border-ryuu-neon/35 bg-ryuu-neon/8 px-3 py-3 text-center text-xs font-black text-ryuu-soft transition hover:bg-ryuu-neon/12">
+              Enviar imagem/GIF até 20MB
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="hidden"
+                onChange={(event) => handleProductImageUpload(product, event.target.files?.[0])}
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <AdminField label="Nome">
+              <input
+                value={product.name}
+                onChange={(event) => updataProduct(product.id, 'name', event.target.value)}
+                className="admin-input font-black"
+              />
+            </AdminField>
+            <AdminField label="Status">
+              <select
+                value={product.available ? 'available' : 'unavailable'}
+                onChange={(event) => updataProduct(product.id, 'available', event.target.value === 'available')}
+                className="admin-input"
+              >
+                <option value="available">Disponível</option>
+                <option value="unavailable">Indisponível</option>
+              </select>
+            </AdminField>
+          </div>
+
+          <AdminField label="Descrição curta">
+            <input
+              value={product.shortDescription || ''}
+              onChange={(event) => updataProduct(product.id, 'shortDescription', event.target.value)}
+              placeholder="Resumo que aparece no card"
+              className="admin-input"
+            />
+          </AdminField>
+
+          <AdminField label="Descrição completa">
+            <textarea
+              value={product.description}
+              onChange={(event) => updataProduct(product.id, 'description', event.target.value)}
+              className="admin-input h-32 resize-y"
+            />
+          </AdminField>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <AdminField label="Preço">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={product.price}
+                onChange={(event) => updataProduct(product.id, 'price', event.target.value)}
+                className="admin-input"
+              />
+            </AdminField>
+            <AdminField label="Estoque">
+              <input
+                type="number"
+                min="0"
+                value={product.stock || 0}
+                onChange={(event) => updataProduct(product.id, 'stock', event.target.value)}
+                className="admin-input"
+              />
+            </AdminField>
+            <AdminField label="Vendas">
+              <input value={product.sales || 0} disabled className="admin-input opacity-70" />
+            </AdminField>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => saveProduct(product)}
+              className="flex items-center justify-center gap-2 rounded-lg border border-ryuu-neon/25 bg-ryuu-neon/10 px-3 py-3 text-xs font-black text-ryuu-soft"
+            >
+              <Save size={15} />
+              Salvar
+            </button>
+            <button
+              type="button"
+              onClick={() => duplicateProduct(product)}
+              className="rounded-lg border border-purple-200/15 bg-white/5 px-3 py-3 text-xs font-black text-purple-100"
+            >
+              Duplicar
+            </button>
+            <button
+              type="button"
+              onClick={() => removeProduct(product.id)}
+              className="rounded-lg border border-red-300/20 bg-red-400/10 px-3 py-3 text-xs font-black text-red-100"
+            >
+              Excluir
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminField({ label, children }) {
+  return (
+    <label className="grid gap-1 text-xs font-black uppercase tracking-[0.12em] text-purple-100/58">
+      {label}
+      {children}
+    </label>
   );
 }
 
