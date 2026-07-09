@@ -2239,6 +2239,7 @@ function Checkout({
   discordUser,
   setDiscordUser,
   pixPayment,
+  pixTimeLeft,
   startPixPayment,
   cancelPixPayment,
   checkoutSuccess,
