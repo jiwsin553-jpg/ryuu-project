@@ -986,6 +986,8 @@ function App() {
             coupons={adminCoupons}
             setCoupons={setAdminCoupons}
             notify={notify}
+            profile={profile}
+            currentUser={currentUser}
           />
         )}
       </main>
@@ -1275,7 +1277,7 @@ function Hero({ setActiveView }) {
           alt="BANNER GIF Ryuu Cheats"
           decoding="async"
           fetchPriority="high"
-          className="h-28 w-full object-cover sm:h-44 lg:h-60"
+          className="h-28 w-full object-cover sm:h-44 lg:h-48"
         />
       </div>
       <div className="py-12">
@@ -2383,9 +2385,12 @@ function AdminDashboard({
   coupons: adminCoupons,
   setCoupons,
   notify,
+  profile,
+  currentUser,
 }) {
   const [orderFilter, setOrderFilter] = useState('Todos');
   const [couponDraft, setCouponDraft] = useState({ code: '', value: '', type: 'Percentual' });
+  const adminName = profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Admin';
   const revenue = adminOrders.reduce((total, order) => total + order.value, 0);
   const sentCount = adminOrders.filter((order) => order.status === 'Acesso Enviado').length;
   const filteredOrders =
@@ -2544,7 +2549,7 @@ function AdminDashboard({
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full border border-ryuu-neon/25 bg-ryuu-deep/40 px-4 py-2 text-sm font-bold text-pink-100">
-          <ShieldCheck size={17} /> Rota protegida por role admin
+          <ShieldCheck size={17} /> Bem-vindo, {adminName}
         </div>
       </div>
 
