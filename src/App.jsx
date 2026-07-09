@@ -46,7 +46,13 @@ import bannerGif from '../Banner/RYUU_BANNER.png';
 import discordIcon from './assets/discord-brand.svg';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { appConfig, integrations } from './lib/config';
-import { createMercadoPagoPayment, notifyDiscordOrder, notifyEmailOrder } from './lib/integrations';
+import {
+  cancelMercadoPagoPayment,
+  createMercadoPagoPayment,
+  getMercadoPagoPaymentStatus,
+  notifyDiscordOrder,
+  notifyEmailOrder,
+} from './lib/integrations';
 
 const initialProducts = [
   {
@@ -123,12 +129,25 @@ const roleLabels = {
 };
 
 const cartStorageKey = 'ryuu-cart-v3';
+const pixStorageKey = 'ryuu-pix-payment-v1';
+const pixPaymentTtlMs = 5 * 60 * 1000;
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
   }).format(value);
+
+const getSavedPixPayment = () => {
+  const savedPix = localStorage.getItem(pixStorageKey);
+  if (!savedPix) return null;
+  try {
+    const parsedPix = JSON.parse(savedPix);
+    return parsedPix?.expiresAt ? parsedPix : null;
+  } catch {
+    return null;
+  }
+};
 
 const dbProductToProduct = (product) => ({
   id: product.id,
@@ -211,7 +230,7 @@ function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authTab, setAuthTab] = useState('login');
   const [toast, setToast] = useState(null);
-  const [activeView, setActiveView] = useState('home');
+  const [activeView, setActiveView] = useState(() => (getSavedPixPayment() ? 'checkout' : 'home'));
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -223,7 +242,8 @@ function App() {
   const [userRole, setUserRole] = useState('usuario');
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [pixPayment, setPixPayment] = useState(null);
+  const [pixPayment, setPixPayment] = useState(getSavedPixPayment);
+  const [pixTimeLeft, setPixTimeLeft] = useState(0);
   const [orderStatus, setOrderStatus] = useState(orders);
   const [registeredUsers, setRegisteredUsers] = useState(users);
   const [adminCoupons, setAdminCoupons] = useState(initialAdminCoupons);
@@ -233,6 +253,14 @@ function App() {
   useEffect(() => {
     localStorage.setItem(cartStorageKey, JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    if (pixPayment) {
+      localStorage.setItem(pixStorageKey, JSON.stringify(pixPayment));
+    } else {
+      localStorage.removeItem(pixStorageKey);
+    }
+  }, [pixPayment]);
 
   const notify = (message, type = 'success') => setToast({ message: `Ryuu: ${message}`, type });
 
@@ -590,11 +618,14 @@ function App() {
       const transactionData = result.point_of_interaction?.transaction_data || {};
       setPixPayment({
         orderId: order.id,
+        rawOrderId: order.rawId,
         paymentId: result.id,
         qrCode: transactionData.qr_code || '',
         qrCodeBase64: transactionData.qr_code_base64 || '',
         ticketUrl: transactionData.ticket_url || '',
         status: result.status || 'pending',
+        createdAt: Date.now(),
+        expiresAt: Date.now() + pixPaymentTtlMs,
       });
 
       notify('Pix gerado. Aguardando pagamento.', 'warning');
@@ -603,6 +634,12 @@ function App() {
     } finally {
       setIsProcessingPayment(false);
     }
+  };
+
+  const applyPaymentStatus = (rawOrderId, status) => {
+    setOrderStatus((current) =>
+      current.map((order) => (order.rawId === rawOrderId ? { ...order, status } : order)),
+    );
   };
 
   const startMercadoPagoPayment = async (paymentDate) => {
@@ -650,6 +687,91 @@ function App() {
       setIsProcessingPayment(false);
     }
   };
+
+  const cancelPixPayment = async ({ silent = false, expired = false } = {}) => {
+    if (!pixPayment?.paymentId || !pixPayment?.rawOrderId) {
+      setPixPayment(null);
+      return;
+    }
+
+    if (!silent && !window.confirm('Cancelar este pagamento Pix?')) return;
+
+    setIsProcessingPayment(true);
+    try {
+      await cancelMercadoPagoPayment({
+        paymentId: pixPayment.paymentId,
+        orderId: pixPayment.rawOrderId,
+      });
+
+      applyPaymentStatus(pixPayment.rawOrderId, 'Cancelado');
+      setPixPayment(null);
+      notify(expired ? 'Tempo esgotado. Pedido cancelado.' : 'Pagamento cancelado.', expired ? 'warning' : 'success');
+    } catch (error) {
+      notify(error.message || 'Erro ao cancelar pagamento.', 'error');
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!pixPayment?.expiresAt) {
+      setPixTimeLeft(0);
+      return undefined;
+    }
+
+    const tick = () => {
+      const remaining = Math.max(0, pixPayment.expiresAt - Date.now());
+      setPixTimeLeft(remaining);
+
+      if (remaining <= 0) {
+        cancelPixPayment({ silent: true, expired: true });
+      }
+    };
+
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [pixPayment?.expiresAt]);
+
+  useEffect(() => {
+    if (!pixPayment?.paymentId || !pixPayment?.rawOrderId) return undefined;
+
+    let cancelled = false;
+
+    const checkPaymentStatus = async () => {
+      try {
+        const result = await getMercadoPagoPaymentStatus({
+          paymentId: pixPayment.paymentId,
+          orderId: pixPayment.rawOrderId,
+        });
+
+        if (cancelled) return;
+
+        if (result.status === 'approved') {
+          applyPaymentStatus(pixPayment.rawOrderId, 'Aguardando Envio');
+          setPixPayment(null);
+          setCart([]);
+          setCheckoutSuccess(true);
+          notify('Pagamento aprovado. Pedido enviado para entrega.');
+        }
+
+        if (['cancelled', 'rejected', 'refunded'].includes(result.status)) {
+          applyPaymentStatus(pixPayment.rawOrderId, 'Cancelado');
+          setPixPayment(null);
+          notify('Pedido cancelado.', 'warning');
+        }
+      } catch {
+        // Mantem o Pix na tela; o webhook ainda pode atualizar o pedido.
+      }
+    };
+
+    checkPaymentStatus();
+    const timer = setInterval(checkPaymentStatus, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [pixPayment?.paymentId, pixPayment?.rawOrderId]);
 
   const handleAuth = async (event) => {
     event.preventDefault();
@@ -945,7 +1067,9 @@ function App() {
             discordUser={discordUser}
             setDiscordUser={setDiscordUser}
             pixPayment={pixPayment}
+            pixTimeLeft={pixTimeLeft}
             startPixPayment={startPixPayment}
+            cancelPixPayment={cancelPixPayment}
             checkoutSuccess={checkoutSuccess}
             startMercadoPagoPayment={startMercadoPagoPayment}
             isProcessingPayment={isProcessingPayment}
@@ -1945,7 +2069,14 @@ function MercadoPagoBrick({ publicKey, amount, enabled, disabled, onPayment }) {
   );
 }
 
-function PixPaymentBox({ pixPayment, disabled, isProcessingPayment, startPixPayment, notify }) {
+function formatTimer(milliseconds) {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+  const seconds = String(totalSeconds % 60).padStart(2, '0');
+  return `${minutes}:${seconds}`;
+}
+
+function PixPaymentBox({ pixPayment, pixTimeLeft, disabled, isProcessingPayment, startPixPayment, cancelPixPayment, notify }) {
   const copyPix = async () => {
     if (!pixPayment?.qrCode) return;
     await navigator.clipboard.writeText(pixPayment.qrCode);
@@ -1959,14 +2090,21 @@ function PixPaymentBox({ pixPayment, disabled, isProcessingPayment, startPixPaym
           <p className="font-black">Pix</p>
           <p className="text-xs font-bold text-pink-100/58">QR Code e copia e cola automático.</p>
         </div>
-        <button
-          type="button"
-          onClick={startPixPayment}
-          disabled={disabled || isProcessingPayment}
-          className="rounded-lg bg-gradient-to-r from-ryuu-violet to-ryuu-neon px-4 py-3 text-sm font-black shadow-glow-sm disabled:cursor-not-allowed disabled:from-zinc-700 disabled:to-zinc-600 disabled:text-zinc-300 disabled:shadow-none"
-        >
-          {isProcessingPayment ? 'Gerando...' : 'Gerar Pix'}
-        </button>
+        {pixPayment && (
+          <div className="rounded-full border border-amber-200/25 bg-amber-300/10 px-3 py-1 text-xs font-black text-amber-100">
+            Expira em {formatTimer(pixTimeLeft)}
+          </div>
+        )}
+        {!pixPayment && (
+          <button
+            type="button"
+            onClick={startPixPayment}
+            disabled={disabled || isProcessingPayment}
+            className="rounded-lg bg-gradient-to-r from-ryuu-violet to-ryuu-neon px-4 py-3 text-sm font-black shadow-glow-sm disabled:cursor-not-allowed disabled:from-zinc-700 disabled:to-zinc-600 disabled:text-zinc-300 disabled:shadow-none"
+          >
+            {isProcessingPayment ? 'Gerando...' : 'Gerar Pix'}
+          </button>
+        )}
       </div>
 
       {pixPayment && (
@@ -1994,6 +2132,14 @@ function PixPaymentBox({ pixPayment, disabled, isProcessingPayment, startPixPaym
             >
               Copiar Pix
             </button>
+            <button
+              type="button"
+              onClick={cancelPixPayment}
+              disabled={isProcessingPayment}
+              className="mt-2 w-full rounded-lg border border-red-300/20 bg-red-400/10 px-4 py-3 text-sm font-black text-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Cancelar pagamento
+            </button>
           </div>
           <p className="rounded-lg border border-amber-200/20 bg-amber-300/10 p-3 text-sm font-bold text-amber-100">
             Após pagar, a aprovação é automática. O pedido muda para Aguardando Envio assim que o banco confirmar.
@@ -2015,6 +2161,7 @@ function Checkout({
   setDiscordUser,
   pixPayment,
   startPixPayment,
+  cancelPixPayment,
   checkoutSuccess,
   startMercadoPagoPayment,
   isProcessingPayment,
@@ -2104,9 +2251,11 @@ function Checkout({
           <h3 className="text-sm font-black uppercase tracking-[0.18em] text-ryuu-soft">Métodos de pagamento</h3>
           <PixPaymentBox
             pixPayment={pixPayment}
+            pixTimeLeft={pixTimeLeft}
             disabled={!discordUser.trim() || isProcessingPayment}
             isProcessingPayment={isProcessingPayment}
             startPixPayment={startPixPayment}
+            cancelPixPayment={cancelPixPayment}
             notify={notify}
           />
           <MercadoPagoBrick

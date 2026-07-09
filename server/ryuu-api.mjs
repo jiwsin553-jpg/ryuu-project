@@ -86,6 +86,24 @@ const getMercadoPago = async (path) => {
   return data;
 };
 
+const putMercadoPago = async (path, payload) => {
+  if (!mercadoPagoAccessToken) throw new Error('MERCADO_PAGO_ACCESS_TOKEN nao configurado.');
+
+  const response = await fetch(`https://api.mercadopago.com${path}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${mercadoPagoAccessToken}`,
+      'Content-Type': 'application/json',
+      'X-Idempotency-Key': crypto.randomUUID(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || data.error || 'Falha no Mercado Pago.');
+  return data;
+};
+
 const updateOrderStatus = async (orderId, status, paymentProviderId) => {
   if (!supabaseUrl || !supabaseServiceRoleKey || !orderId) return null;
 
@@ -111,6 +129,7 @@ const updateOrderStatus = async (orderId, status, paymentProviderId) => {
 const toOrderStatus = (paymentStatus) => {
   if (paymentStatus === 'approved') return 'Aguardando Envio';
   if (paymentStatus === 'pending' || paymentStatus === 'in_process') return 'Aguardando Pagamento';
+  if (paymentStatus === 'cancelled' || paymentStatus === 'rejected' || paymentStatus === 'refunded') return 'Cancelado';
   return 'Aguardando Pagamento';
 };
 
@@ -168,6 +187,57 @@ const handleWebhook = async (request, response, url) => {
   sendJson(request, response, 200, { received: true });
 };
 
+const handleCancelPayment = async (request, response) => {
+  const body = await readJson(request);
+  const paymentId = body.paymentId || body.id;
+  const orderId = body.orderId;
+
+  if (!paymentId || !orderId) {
+    sendJson(request, response, 400, { error: 'Pagamento ou pedido inválido.' });
+    return;
+  }
+
+  const payment = await getMercadoPago(`/v1/payments/${paymentId}`);
+  if (payment.status === 'approved') {
+    sendJson(request, response, 409, { error: 'Pagamento aprovado não pode ser cancelado por aqui.' });
+    return;
+  }
+
+  const cancelledPayment =
+    payment.status === 'cancelled' ? payment : await putMercadoPago(`/v1/payments/${paymentId}`, { status: 'cancelled' });
+
+  await updateOrderStatus(orderId, 'Cancelado', cancelledPayment.id);
+
+  sendJson(request, response, 200, {
+    id: cancelledPayment.id,
+    status: cancelledPayment.status,
+    orderStatus: 'Cancelado',
+  });
+};
+
+const handlePaymentStatus = async (request, response) => {
+  const body = await readJson(request);
+  const paymentId = body.paymentId || body.id;
+  const orderId = body.orderId;
+
+  if (!paymentId) {
+    sendJson(request, response, 400, { error: 'Pagamento inválido.' });
+    return;
+  }
+
+  const payment = await getMercadoPago(`/v1/payments/${paymentId}`);
+  const orderStatus = toOrderStatus(payment.status);
+  await updateOrderStatus(orderId || payment.external_reference, orderStatus, payment.id);
+
+  sendJson(request, response, 200, {
+    id: payment.id,
+    status: payment.status,
+    status_detail: payment.status_detail,
+    orderId: orderId || payment.external_reference,
+    orderStatus,
+  });
+};
+
 const server = http.createServer(async (request, response) => {
   try {
     if (request.method === 'OPTIONS') {
@@ -184,6 +254,16 @@ const server = http.createServer(async (request, response) => {
 
     if (request.method === 'POST' && url.pathname === '/api/mercadopago/payment') {
       await handlePayment(request, response);
+      return;
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/mercadopago/cancel') {
+      await handleCancelPayment(request, response);
+      return;
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/mercadopago/status') {
+      await handlePaymentStatus(request, response);
       return;
     }
 

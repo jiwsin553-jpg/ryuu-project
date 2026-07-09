@@ -20,6 +20,12 @@ export const createStripeCheckout = (payload) => postJson(appConfig.stripe.check
 
 export const createMercadoPagoPayment = (payload) => postJson(appConfig.mercadoPago.paymentEndpoint, payload);
 
+export const cancelMercadoPagoPayment = (payload) =>
+  postJson(appConfig.mercadoPago.paymentEndpoint.replace(/\/payment$/, '/cancel'), payload);
+
+export const getMercadoPagoPaymentStatus = (payload) =>
+  postJson(appConfig.mercadoPago.paymentEndpoint.replace(/\/payment$/, '/status'), payload);
+
 export const notifyDiscordOrder = async (payload) => {
   if (!integrations.discordWebhook) return null;
   return postJson(appConfig.discord.webhookEndpoint, payload);
