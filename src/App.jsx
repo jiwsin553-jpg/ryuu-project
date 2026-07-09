@@ -139,13 +139,45 @@ const formatCurrency = (value) =>
   }).format(value);
 
 const getSavedPixPayment = () => {
-  const savedPix = localStorage.getItem(pixStorageKey);
-  if (!savedPix) return null;
   try {
+    const savedPix = localStorage.getItem(pixStorageKey);
+    if (!savedPix) return null;
     const parsedPix = JSON.parse(savedPix);
-    return parsedPix?.expiresAt ? parsedPix : null;
+    if (!parsedPix?.expiresAt || !parsedPix?.paymentId) {
+      localStorage.removeItem(pixStorageKey);
+      return null;
+    }
+
+    return parsedPix;
   } catch {
+    try {
+      localStorage.removeItem(pixStorageKey);
+    } catch {
+      // Navegador sem acesso ao localStorage: segue sem Pix salvo.
+    }
     return null;
+  }
+};
+
+const getSavedCart = () => {
+  try {
+    const savedCart = localStorage.getItem(cartStorageKey);
+    if (!savedCart) return [];
+
+    const parsedCart = JSON.parse(savedCart);
+    if (!Array.isArray(parsedCart)) {
+      localStorage.removeItem(cartStorageKey);
+      return [];
+    }
+
+    return parsedCart.filter((item) => item && (item.productId || item.id));
+  } catch {
+    try {
+      localStorage.removeItem(cartStorageKey);
+    } catch {
+      // Navegador sem acesso ao localStorage: começa com carrinho vazio.
+    }
+    return [];
   }
 };
 
@@ -220,10 +252,7 @@ const getDiscordNameFromUser = (user) => {
 
 function App() {
   const [products, setProducts] = useState(initialProducts);
-  const [cart, setCart] = useState(() => {
-    const savedCart = localStorage.getItem(cartStorageKey);
-    return savedCart ? JSON.parse(savedCart) : [];
-  });
+  const [cart, setCart] = useState(getSavedCart);
   const [couponCode, setCouponCode] = useState('');
   const [activeCoupon, setActiveCoupon] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
