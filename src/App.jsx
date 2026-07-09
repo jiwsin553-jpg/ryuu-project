@@ -255,6 +255,51 @@ function App() {
   }, [cart]);
 
   useEffect(() => {
+    if (!products.length || !cart.length) return;
+
+    setCart((current) => {
+      let changed = false;
+      const nextCart = current
+        .map((item) => {
+          const product = products.find((currentProduct) => currentProduct.id === (item.productId || item.id));
+          if (!product || !product.available) {
+            changed = true;
+            return null;
+          }
+
+          const nextQuantity = Math.min(item.quantity, Math.max(product.stock || 0, 0));
+          if (nextQuantity <= 0) {
+            changed = true;
+            return null;
+          }
+
+          const nextItem = {
+            ...item,
+            ...product,
+            productId: product.id,
+            displayName: product.name,
+            accessLabel: item.accessLabel || 'Vitalício',
+            quantity: nextQuantity,
+          };
+
+          if (
+            nextItem.price !== item.price ||
+            nextItem.name !== item.name ||
+            nextItem.quantity !== item.quantity ||
+            nextItem.available !== item.available
+          ) {
+            changed = true;
+          }
+
+          return nextItem;
+        })
+        .filter(Boolean);
+
+      return changed ? nextCart : current;
+    });
+  }, [products]);
+
+  useEffect(() => {
     if (pixPayment) {
       localStorage.setItem(pixStorageKey, JSON.stringify(pixPayment));
     } else {
