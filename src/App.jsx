@@ -1749,7 +1749,7 @@ function HomeSalesSections({ deliveryHours, setActiveView }) {
     {
       icon: Zap,
       title: 'Acesso vitalício',
-      text: 'Pagamento único para o produto comprado.',
+      text: 'Acesso permanente ao produto após a compra.',
     },
     {
       icon: Headphones,
