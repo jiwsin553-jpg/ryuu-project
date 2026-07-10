@@ -134,6 +134,14 @@ const getSavedCart = () => {
   }
 };
 
+const fileToDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Erro ao ler imagem.'));
+    reader.readAsDataURL(file);
+  });
+
 const dbProductToProduct = (product) => ({
   id: product.id,
   name: product.name,
@@ -2759,8 +2767,17 @@ function AdminDashboard({
       return;
     }
 
+    let previewUrl = '';
+    try {
+      previewUrl = await fileToDataUrl(file);
+      updataProduct(product.id, 'image', previewUrl);
+    } catch (error) {
+      notify(error.message || 'Erro ao carregar prévia da imagem.', 'error');
+      return;
+    }
+
     if (!isSupabaseConfigured) {
-      notify('Supabase Storage não configurado.', 'error');
+      notify('Prévia aplicada. Configure o Supabase Storage para salvar a URL pública.', 'warning');
       return;
     }
 
@@ -2772,7 +2789,12 @@ function AdminDashboard({
     });
 
     if (uploadError) {
-      notify(uploadError.message, 'error');
+      notify(
+        uploadError.message === 'Bucket not found'
+          ? 'Bucket product-images não existe. Rode o SQL do bucket no Supabase.'
+          : uploadError.message,
+        'error',
+      );
       return;
     }
 
