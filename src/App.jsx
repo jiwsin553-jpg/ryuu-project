@@ -57,16 +57,9 @@ import {
 const initialProducts = [];
 
 
-const coupons = {
-  RYUU10: { type: 'percent', value: 10, label: '10% de desconto' },
-  VITALICIO20: { type: 'fixed', value: 20, label: 'R$ 20,00 de desconto' },
-};
+const coupons = {};
 
-const initialAdminCoupons = [
-  { code: 'RYUU10', type: 'Percentual', value: '10%', status: 'Ativo', limit: 100 },
-  { code: 'VITALICIO20', type: 'Valor fixo', value: 'R$ 20,00', status: 'Ativo', limit: 50 },
-  { code: 'LANCAMENTO', type: 'Percentual', value: '15%', status: 'Inativo', limit: 25 },
-];
+const initialAdminCoupons = [];
 
 const salesDate = [
   { label: 'Seg', vendas: 480, pedidos: 5 },
@@ -2792,14 +2785,13 @@ function AdminDashboard({
     <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-ryuu-soft">Admin Dashboard</p>
-          <h1 className="mt-2 text-4xl font-black">Painel administrativo</h1>
+          <p className="text-sm font-black uppercase tracking-[0.22em] text-ryuu-soft">Painel Administrativo</p>
           <p className="mt-3 max-w-2xl text-pink-100/62">
-            Controle pedidos, produtos, usuários e cupons em um só lugar.
+            Gerencie produtos, pedidos, cupons e usuários.
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full border border-ryuu-neon/25 bg-ryuu-deep/40 px-4 py-2 text-sm font-bold text-pink-100">
-          <ShieldCheck size={17} /> Bem-vindo, {adminName}
+          <ShieldCheck size={17} /> Bem-vindo, {adminName}!
         </div>
       </div>
 
@@ -2964,7 +2956,7 @@ function AdminDashboard({
         <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <h2 className="text-2xl font-black">Produtos</h2>
-            <p className="mt-1 text-sm text-pink-100/58">Edite preço, estoque, imagens e descrições com mais espaço.</p>
+            <p className="mt-1 text-sm text-pink-100/58">Edite preço, estoque, imagens e descrições.</p>
           </div>
           <button
             type="button"
@@ -3169,7 +3161,7 @@ function AdminProductEditor({
               />
             </AdminField>
             <label className="rounded-lg border border-dashed border-ryuu-neon/35 bg-ryuu-neon/8 px-3 py-3 text-center text-xs font-black text-ryuu-soft transition hover:bg-ryuu-neon/12">
-              Enviar imagem/GIF até 20MB
+              Enviar imagem/GIF
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif"
