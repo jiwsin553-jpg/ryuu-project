@@ -54,48 +54,8 @@ import {
   notifyEmailOrder,
 } from './lib/integrations';
 
-const initialProducts = [
-  {
-    id: 'ryuu-externo',
-    name: 'Ryuu External',
-    shortDescription: 'Painel externo para Blood Strike com acesso vitalício.',
-    description:
-      'Smoke External\n\nAIMBOT:\n- Aimbot Enabled\n- Draw FOV\n- Randomize Aim\n- FOV\n- Smooth\n\nESP:\n- ESP Enabled\n- Box ESP\n- Cornered Box\n- Filled Box\n- Bones ESP\n- Snapline\n\nOVERLAYS:\n- Show Hotkey\n- Watermark\n- Stream Bypass\n\nCOMPATIBILIDADE:\n- Windows 10/11.',
-    features: [
-      { title: 'AIMBOT', items: ['Aimbot Enabled', 'Draw FOV', 'Randomize Aim', 'FOV', 'Smooth'] },
-      { title: 'ESP', items: ['ESP Enabled', 'Box ESP', 'Cornered Box', 'Filled Box', 'Bones ESP', 'Snapline'] },
-      { title: 'OVERLAYS', items: ['Show Hotkey', 'Watermark', 'Stream Bypass'] },
-      { title: 'COMPATIBILIDADE', items: ['Windows 10/11'] },
-    ],
-    price: 10,
-    stock: 100,
-    available: true,
-    image: 'Produto principal',
-    sales: 138,
-  },
-  {
-    id: 'ryuu-changer',
-    name: 'Ryuu Changer',
-    shortDescription: 'Ferramenta de personalização avançada. Descrição editável pelo administrador.',
-    description: 'Ferramenta de personalização avançada. Descrição editável pelo administrador.',
-    features: [{ title: 'STATUS', items: ['Produto em preparação', 'Sem vendas liberadas no momento'] }],
-    price: 79,
-    available: false,
-    image: 'Em breve',
-    sales: 42,
-  },
-  {
-    id: 'ryuu-extremer',
-    name: 'Ryuu Extremer',
-    shortDescription: 'Versão extrema em preparação, com recursos avançados e entrega manual.',
-    description: 'Versão extrema em preparação, com recursos avançados e entrega manual.',
-    features: [{ title: 'STATUS', items: ['Produto em preparação', 'Sem vendas liberadas no momento'] }],
-    price: 147,
-    available: false,
-    image: 'Em breve',
-    sales: 21,
-  },
-];
+const initialProducts = [];
+
 
 const coupons = {
   RYUU10: { type: 'percent', value: 10, label: '10% de desconto' },
@@ -373,7 +333,7 @@ function App() {
       if (productsError) throw productsError;
       if (couponsError) throw couponsError;
 
-      if (dbProducts.length) setProducts(dbProducts.map(dbProductToProduct));
+      setProducts((dbProducts || []).map(dbProductToProduct));
 
       if (dbCoupons) {
         setAdminCoupons(dbCoupons.map(dbCouponToAdminCoupon));
@@ -597,7 +557,7 @@ function App() {
 
   const createOrder = async (method) => {
     if (!discordUser.trim()) {
-      notify('Informe seu usuario do Discord para continuar.', 'error');
+      notify('Informe seu usuário do Discord para continuar.', 'error');
       return null;
     }
 
@@ -1520,6 +1480,16 @@ function ProductCatalog({ products, addToCart, setSelectedProduct, standalone = 
         </div>
       </div>
 
+      {products.length === 0 && (
+        <div className="rounded-lg border border-pink-200/12 bg-white/[0.035] p-8 text-center">
+          <PackageCheck className="mx-auto text-ryuu-soft" size={34} />
+          <h3 className="mt-4 text-2xl font-black">Nenhum produto cadastrado</h3>
+          <p className="mt-2 text-sm text-pink-100/62">
+            Os produtos aparecem aqui depois que o administrador cadastrar no painel.
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-5 md:grid-cols-3">
         {products.map((product) => (
             <article
@@ -1663,7 +1633,7 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
 
             {activeTab === 'overview' && (
               <div className="rounded-lg border border-pink-200/12 bg-black/22 p-5">
-                <h3 className="text-2xl font-black">Smoke External</h3>
+                <h3 className="text-2xl font-black">{product.name}</h3>
                 <p className="mt-3 leading-7 text-pink-100/76">{product.shortDescription || product.description}</p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <DetailPill icon={BadgeCheck} label="Status" value={product.available ? 'Disponível' : 'Indisponível'} />
@@ -1700,7 +1670,7 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
                   no checkout em até {deliveryHours} horas.
                 </p>
                 <div className="mt-5 rounded-lg border border-ryuu-neon/20 bg-ryuu-neon/10 p-4 text-sm font-bold text-pink-100">
-                  Informe seu usuario do Discord corretamente no checkout para evitar atraso na entrega.
+                  Informe seu usuário do Discord corretamente no checkout para evitar atraso na entrega.
                 </div>
               </div>
             )}
@@ -1754,23 +1724,57 @@ function HomeSalesSections({ deliveryHours, setActiveView }) {
     {
       icon: Headphones,
       title: 'Suporte',
-      text: 'Atendimento pelo Discord.',
+      text: 'Suporte direto pelo Discord oficial da Ryuu Cheats.',
     },
   ];
 
   const faqs = [
     {
-      q: 'O acesso ? mensal',
-      a: 'Não. O acesso é vitalício.',
+      q: 'O acesso é mensal?',
+      a: 'Não, o acesso é vitalício.',
     },
     {
-      q: 'Quais sistemas são compatíveis',
-      a: 'O Ryuu External informa compatibilidade com Windows 10 e Windows 11.',
+      q: 'Quais sistemas são compatíveis?',
+      a: 'Os painéis Ryuu Cheats são compatíveis com Windows 10 e 11.',
     },
     {
-      q: 'Em quanto tempo recebo',
-      a: `Em até ${deliveryHours} horas após o pagamento.`,
+      q: 'Em quanto tempo recebo o acesso?',
+      a: `Após a confirmação do pagamento, a equipe Ryuu Cheats envia o acesso pelo Discord informado no checkout em até ${deliveryHours} horas.`,
     },
+    {
+      q: 'Como funciona o suporte?',
+      a: 'O suporte é feito diretamente pelo Discord oficial da Ryuu Cheats.',
+    },
+
+    {
+      q: 'Posso comprar mais de um produto?',
+      a: 'Sim, você pode adicionar quantos produtos quiser ao carrinho e finalizar a compra de uma vez.',
+    },
+
+    {
+      q: 'Posso comprar para outra pessoa?',
+      a: 'Sim, você pode informar o Discord da pessoa no checkout para que ela receba o acesso.',
+    },
+
+    {
+      q: 'Posso solicitar reembolso?',
+      a: 'Não, não oferecemos reembolso. Certifique-se de ler as informações do produto antes de comprar.',
+    },
+
+    {
+      q: 'Posso revender os produtos?',
+      a: 'Não, a revenda dos produtos é proibida. O acesso é pessoal e intransferível.',
+    },
+
+    {
+      q: 'Posso compartilhar o acesso com outras pessoas?',
+      a: 'Não, o compartilhamento do acesso é proibido. O acesso é pessoal e intransferível.',
+    },
+
+    {
+      q: 'Posso comprar com cartão de crédito?',
+      a: 'Sim, aceitamos pagamentos com cartão de crédito e PIX.',
+    },                           
   ];
 
   return (
@@ -1793,7 +1797,7 @@ function HomeSalesSections({ deliveryHours, setActiveView }) {
       <div className="mt-8 grid gap-5 lg:grid-cols-[0.55fr_1fr] lg:items-start">
         <div>
           <p className="text-sm font-black uppercase tracking-[0.22em] text-ryuu-soft">FAQ</p>
-          <h2 className="mt-2 text-3xl font-black">Dúvidas rápidas</h2>
+          <h2 className="mt-2 text-3xl font-black">Dúvidas frequentes</h2>
         </div>
         <div className="grid gap-3">
           {faqs.map((item) => (
