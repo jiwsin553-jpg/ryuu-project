@@ -935,7 +935,7 @@ function App() {
     notify('Pedido removido.');
   };
 
-  const updataProduct = (productId, field, value) => {
+  const updateProduct = (productId, field, value) => {
     setProducts((current) =>
       current.map((product) =>
         product.id === productId
@@ -967,7 +967,7 @@ function App() {
       shortDescription: 'Descrição curta editável pelo administrador.',
       description: 'Descrição completa editável pelo administrador.',
       features: [{ title: 'STATUS', items: ['Produto recém-criado'] }],
-      price: 99,
+      price: 99, 
       stock: 0,
       available: false,
       image: 'Novo produto',
@@ -1145,7 +1145,7 @@ function App() {
             deliveryHours={deliveryHours}
             setDeliveryHours={setDeliveryHours}
             products={products}
-            updataProduct={updataProduct}
+            updateProduct={updateProduct}
             saveProduct={saveProduct}
             addProduct={addProduct}
             duplicateProduct={duplicateProduct}
@@ -1665,10 +1665,9 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
 
             {activeTab === 'delivery' && (
               <div className="rounded-lg border border-pink-200/12 bg-black/22 p-5">
-                <h3 className="text-2xl font-black">Entrega manual monitorada</h3>
+                <h3 className="text-2xl font-black">Entrega</h3>
                 <p className="mt-3 leading-7 text-pink-100/76">
-                  Após a confirmação do pagamento, a equipe Ryuu Cheats envia o acesso manualmente pelo Discord informado
-                  no checkout em até {deliveryHours} horas.
+                  Após a confirmação do pagamento, a equipe Ryuu Cheats envia o acesso pelo Discord informado no checkout em até {deliveryHours} horas.
                 </p>
                 <div className="mt-5 rounded-lg border border-ryuu-neon/20 bg-ryuu-neon/10 p-4 text-sm font-bold text-pink-100">
                   Informe seu usuário do Discord corretamente no checkout para evitar atraso na entrega.
@@ -1678,13 +1677,18 @@ function ProductDetailModal({ product, onClose, addToCart, deliveryHours }) {
 
             {activeTab === 'terms' && (
               <div className="rounded-lg border border-pink-200/12 bg-black/22 p-5">
-                <h3 className="text-2xl font-black">Compra clara e suporte direto</h3>
+                <h3 className="text-2xl font-black">Termos e Condições</h3>
                 <div className="mt-4 grid gap-3">
                   {[
-                    'Pagamento único, sem assinatura ou renovação.',
-                    'Produtos indisponíveis ficam bloqueados para compra.',
-                    'Pedido aparece no dashboard do cliente após confirmação.',
-                    'Suporte e dúvidas pelo Discord oficial da Ryuu Cheats.',
+                    'O acesso é pessoal e intransferível.',
+                    'Não oferecemos reembolso. Certifique-se de ler as informações do produto antes de comprar.',
+                    'A revenda dos produtos é proibida.',
+                    'O compartilhamento do acesso é proibido.',
+                    'Aceitamos pagamentos com cartão de crédito e PIX.',
+                    'O suporte é feito diretamente pelo Discord oficial da Ryuu Cheats.',
+                    'Após a confirmação do pagamento, a equipe Ryuu Cheats envia o acesso pelo Discord informado no checkout em até 24 horas.',
+
+                    <h3 className="text-lg font-black text-ryuu-soft">Obrigado pelo interesse!</h3>
                   ].map((item) => (
                     <div key={item} className="flex gap-3 rounded-lg bg-white/[0.035] p-3 text-pink-100/78">
                       <ShieldCheck size={18} className="mt-0.5 shrink-0 text-ryuu-soft" />
@@ -2622,7 +2626,7 @@ function AdminDashboard({
   deliveryHours,
   setDeliveryHours,
   products,
-  updataProduct,
+  updateProduct,
   saveProduct,
   addProduct,
   duplicateProduct,
@@ -2770,7 +2774,7 @@ function AdminDashboard({
     let previewUrl = '';
     try {
       previewUrl = await fileToDataUrl(file);
-      updataProduct(product.id, 'image', previewUrl);
+      updateProduct(product.id, 'image', previewUrl);
     } catch (error) {
       notify(error.message || 'Erro ao carregar prévia da imagem.', 'error');
       return;
@@ -2799,7 +2803,7 @@ function AdminDashboard({
     }
 
     const { data } = supabase.storage.from('product-images').getPublicUrl(path);
-    updataProduct(product.id, 'image', data.publicUrl);
+    updateProduct(product.id, 'image', data.publicUrl);
     notify('Imagem adicionada.');
   };
 
@@ -2993,7 +2997,7 @@ function AdminDashboard({
             <AdminProductEditor
               key={product.id}
               product={product}
-              updataProduct={updataProduct}
+              updateProduct={updateProduct}
               saveProduct={saveProduct}
               duplicateProduct={duplicateProduct}
               removeProduct={removeProduct}
@@ -3145,7 +3149,7 @@ function AdminStat({ icon: Icon, label, value }) {
 
 function AdminProductEditor({
   product,
-  updataProduct,
+  updateProduct,
   saveProduct,
   duplicateProduct,
   removeProduct,
@@ -3177,7 +3181,7 @@ function AdminProductEditor({
             <AdminField label="Imagem ou GIF">
               <input
                 value={product.image || ''}
-                onChange={(event) => updataProduct(product.id, 'image', event.target.value)}
+                onChange={(event) => updateProduct(product.id, 'image', event.target.value)}
                 placeholder="URL da imagem/GIF ou texto do placeholder"
                 className="admin-input"
               />
@@ -3199,14 +3203,14 @@ function AdminProductEditor({
             <AdminField label="Nome">
               <input
                 value={product.name}
-                onChange={(event) => updataProduct(product.id, 'name', event.target.value)}
+                onChange={(event) => updateProduct(product.id, 'name', event.target.value)}
                 className="admin-input font-black"
               />
             </AdminField>
             <AdminField label="Status">
               <select
                 value={product.available ? 'available' : 'unavailable'}
-                onChange={(event) => updataProduct(product.id, 'available', event.target.value === 'available')}
+                onChange={(event) => updateProduct(product.id, 'available', event.target.value === 'available')}
                 className="admin-input"
               >
                 <option value="available">Disponível</option>
@@ -3218,7 +3222,7 @@ function AdminProductEditor({
           <AdminField label="Descrição curta">
             <input
               value={product.shortDescription || ''}
-              onChange={(event) => updataProduct(product.id, 'shortDescription', event.target.value)}
+              onChange={(event) => updateProduct(product.id, 'shortDescription', event.target.value)}
               placeholder="Resumo que aparece no card"
               className="admin-input"
             />
@@ -3227,7 +3231,7 @@ function AdminProductEditor({
           <AdminField label="Descrição completa">
             <textarea
               value={product.description}
-              onChange={(event) => updataProduct(product.id, 'description', event.target.value)}
+              onChange={(event) => updateProduct(product.id, 'description', event.target.value)}
               className="admin-input h-32 resize-y"
             />
           </AdminField>
@@ -3239,7 +3243,7 @@ function AdminProductEditor({
                 min="0"
                 step="0.01"
                 value={product.price}
-                onChange={(event) => updataProduct(product.id, 'price', event.target.value)}
+                onChange={(event) => updateProduct(product.id, 'price', event.target.value)}
                 className="admin-input"
               />
             </AdminField>
@@ -3248,7 +3252,7 @@ function AdminProductEditor({
                 type="number"
                 min="0"
                 value={product.stock || 0}
-                onChange={(event) => updataProduct(product.id, 'stock', event.target.value)}
+                onChange={(event) => updateProduct(product.id, 'stock', event.target.value)}
                 className="admin-input"
               />
             </AdminField>
